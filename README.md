@@ -2,7 +2,13 @@
 
 Windows / macOS 原生半透明悬浮窗，用于集中显示个人 Agent 套餐额度。正式应用没有“演示”标识，也没有模拟用量。
 
-![Agent Meter 显示示例](docs/images/overview.png)
+**主界面**
+
+<img src="docs/images/overview.png" alt="Agent Meter 主界面：Codex 和 Cursor 的额度及示例重置时间" width="364">
+
+**迷你条**
+
+<img src="docs/images/minibar.png" alt="Agent Meter 双行迷你条：左侧拖柄、Codex 和 Cursor 额度、右侧设置与展开按钮" width="302">
 
 截图使用示例读数。支持选择显示的 Agent、多个额度窗口、迷你条及原地刷新。
 
