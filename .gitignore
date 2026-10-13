@@ -1,0 +1,25 @@
+__pycache__/
+.venv/
+build/
+dist/
+*.log
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.codex/
+.cursor/
+.env
+.env.*
+!.env.example
+*.dpapi.json
+quota-cache.json
+claude-quota.json
+settings.json
+smoke-result.json
+
+# Local design iterations and generated verification screenshots.
+/design/
+/*.png
+/agent-meter-preview.html
+/verify-preview.py
+/verify-order.py
