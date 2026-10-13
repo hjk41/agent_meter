@@ -58,6 +58,15 @@ def app_logo(size):
 def short_quota_name(name):
     return name.replace(' 小时', 'h').replace(' 天', 'd').replace(' 分钟', 'm')
 
+def mini_quota_name(provider, name):
+    if provider == 'cursor':
+        aliases = {'其他模型 · 月度': '其他', 'Cursor / Auto 模型 · 月度': 'Auto',
+            '套餐额度 · 月度': '月度', '其他模型额度池': '其他',
+            'Cursor 模型额度池': 'Cursor', '套餐额度池': '套餐'}
+        if name in aliases: return aliases[name]
+    short = short_quota_name(name)
+    return short if len(short) <= 8 else short[:7] + '…'
+
 def quota_tooltip(snapshot):
     lines = [snapshot.message]
     lines.extend(f'{q.name}：剩余 {percent(q)} · {reset_text(q.reset_at)}' for q in snapshot.quotas)
@@ -420,11 +429,11 @@ class MeterWindow(QWidget):
     def mini_button_data(self,p):
         s=self.snapshots[p]; cfg=self.store.settings; c=self.colors
         name='Claude' if p=='claude' else PROVIDERS[p][0]
-        values=' · '.join(f'{short_quota_name(q.name)} {percent(q)}' for q in s.quotas[:2])
+        values=' '.join(f'{mini_quota_name(p,q.name)}{percent(q)}' for q in s.quotas[:2])
         if len(s.quotas)>2: values+=f' +{len(s.quotas)-2}'
         text=name+' '+(values or '—')
         if self.snapshot_status(s) in ('error','stale'): text+=' ·'
-        style=f'QPushButton {{background:{c["tile"]};border:1px solid {c["border"]};padding:4px 7px;}}'
+        style=f'QPushButton {{background:{c["tile"]};border:1px solid {c["border"]};padding:4px 5px;}}'
         if any(q.remaining<cfg['warning_threshold'] for q in s.quotas): style+=f'QPushButton {{color:{c["warning"]};}}'
         return text,PROVIDERS[p][0]+' · '+quota_tooltip(s),style
     def update_data(self,providers=None):
@@ -435,7 +444,7 @@ class MeterWindow(QWidget):
                 b=self.mini_buttons.get(p)
                 if b:
                     text,tip,style=self.mini_button_data(p)
-                    b.setText(b.fontMetrics().elidedText(text,Qt.TextElideMode.ElideRight,b.width()-14))
+                    b.setText(b.fontMetrics().elidedText(text,Qt.TextElideMode.ElideRight,b.width()-12))
                     b.setToolTip(tip); b.setAccessibleName(tip)
                     if b.styleSheet()!=style: b.setStyleSheet(style)
             elif p in self.tiles: self.tiles[p].update_snapshot()
@@ -458,7 +467,16 @@ class MeterWindow(QWidget):
                 if p not in cfg['mini_ids']: continue
                 text,tip,style=self.mini_button_data(p)
                 b=button(text,tip,lambda p=p:self.show_detail(p)); b.setStyleSheet(style)
-                b.setFixedWidth(max(152,b.sizeHint().width())); self.mini_buttons[p]=b
+                font=QFont(FONT_FAMILY); font.setPixelSize(11); b.setFont(font)
+                # Reserve the normal two-window reading rather than sizing to
+                # long server names or the current percentage. Refresh is stable.
+                reserve={'cursor':'Cursor 其他100% Auto100% ·',
+                    'codex':'Codex 5h100% 7d100% +9 ·',
+                    'claude':'Claude 5h100% 7d100% +9 ·',
+                    'doubao':'豆包 5h不限量 7d不限量 +9 ·'}[p]
+                b.setFixedWidth(min(180,max(132,b.fontMetrics().horizontalAdvance(reserve)+14)))
+                b.setText(b.fontMetrics().elidedText(text,Qt.TextElideMode.ElideRight,b.width()-12))
+                self.mini_buttons[p]=b
                 row.addWidget(b)
             row.addWidget(button('⚙','配置迷你条',self.show_settings,28)); row.addWidget(button('↗','展开用量窗口',self.toggle_mini,28))
             self.body.addLayout(row)

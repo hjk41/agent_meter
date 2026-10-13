@@ -33,7 +33,7 @@ class WindowTests(unittest.TestCase):
             self.assertLessEqual(max(centers)-min(centers),1)
             self.assertLess(self.window.height(),80)
             self.assertGreater(self.window.width(),150)
-            self.assertLess(self.window.width(),600)
+            self.assertLess(self.window.width(),650)
         self.store.settings['mini']=False; self.store.settings['layout']='dock'; self.window.render(); self.app.processEvents()
         self.assertEqual(len(self.window.tiles),4)
         self.assertGreater(self.window.width(),600)
@@ -213,7 +213,23 @@ class WindowTests(unittest.TestCase):
         self.store.settings['mini']=True; self.store.settings['mini_ids']=['claude']
         self.window.render(); self.app.processEvents()
         mini=[button.text() for button in self.window.findChildren(QPushButton) if button.isVisible()]
-        self.assertTrue(any('5h 23%' in text and '7d 81%' in text and '+1' in text for text in mini))
+        self.assertTrue(any('5h23%' in text and '7d81%' in text and '+1' in text for text in mini))
+
+    def test_cursor_mini_keeps_both_pools_compact_and_stable(self):
+        self.store.settings['mini']=True; self.store.settings['mini_ids']=['cursor']
+        self.window.snapshots['cursor']=Snapshot('cursor','live','已连接',quotas=[
+            Quota('其他模型 · 月度',5),Quota('Cursor / Auto 模型 · 月度',76)])
+        self.window.render(); self.app.processEvents()
+        button=self.window.mini_buttons['cursor']; geometry=self.window.geometry()
+        self.assertEqual(button.text(),'Cursor 其他5% Auto76%')
+        self.assertLessEqual(button.width(),180)
+        self.assertIn('其他模型 · 月度',button.toolTip())
+        self.assertIn('Cursor / Auto 模型 · 月度',button.toolTip())
+        self.window.received('cursor',Snapshot('cursor','live','已连接',quotas=[
+            Quota('其他模型 · 月度',100),Quota('Cursor / Auto 模型 · 月度',100)]))
+        self.app.processEvents()
+        self.assertEqual(button.text(),'Cursor 其他100% Auto100%')
+        self.assertEqual(self.window.geometry(),geometry)
 
     def test_claude_oauth_start_close_and_success_controls(self):
         class ImmediatePool:
