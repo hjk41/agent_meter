@@ -11,6 +11,7 @@ import threading
 import time
 import requests
 from .model import Quota, Snapshot, number
+from . import __version__
 from .storage import read_json, validate_proxy, provider_network
 
 CREATE_NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
@@ -129,7 +130,7 @@ def collect_codex(network):
                 raise requests.ConnectionError('Quota service unavailable')
             return response.get('result',{})
     try:
-        send('initialize',1,{'clientInfo':{'name':'agent_meter','title':'Agent Meter','version':'0.1.0'}})
+        send('initialize',1,{'clientInfo':{'name':'agent_meter','title':'Agent Meter','version':__version__}})
         wait(1); send('initialized')
         send('account/rateLimits/read',2)
         return parse_codex(wait(2))

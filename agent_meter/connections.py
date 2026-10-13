@@ -9,6 +9,7 @@ import threading
 import time
 from urllib.parse import urlparse
 from .providers import codex_command, proxy_environment, CREATE_NO_WINDOW
+from . import __version__
 
 USAGE_URLS = {'cursor':'https://cursor.com/dashboard?tab=usage',
               'codex':'https://chatgpt.com/codex/settings/usage',
@@ -63,7 +64,7 @@ def codex_login(network, cancelled, on_url, on_status, command=None):
         process.stdin.write(json.dumps(msg)+'\n'); process.stdin.flush()
     login_id=None; started=False; completed=False; deadline=time.monotonic()+180
     try:
-        send('initialize',1,{'clientInfo':{'name':'agent_meter','version':'0.1.0'}})
+        send('initialize',1,{'clientInfo':{'name':'agent_meter','version':__version__}})
         while time.monotonic()<deadline and not cancelled.is_set():
             try: message=inbox.get(timeout=.25)
             except queue.Empty: continue

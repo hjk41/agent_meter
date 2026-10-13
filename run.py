@@ -66,7 +66,7 @@ def main():
         # Exit promptly once the initial collection completes.
         smoke_check=QTimer()
         def check():
-            if not window.busy and any(s.collected_at for s in window.snapshots.values()):
+            if not window.busy:
                 smoke_check.stop(); finish_smoke()
         smoke_check.timeout.connect(check); smoke_check.start(500)
     if sys.platform=='win32':

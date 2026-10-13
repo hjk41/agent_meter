@@ -6,22 +6,32 @@ Windows / macOS 原生半透明悬浮窗，用于集中显示个人 Agent 套餐
 
 截图使用示例读数。支持选择显示的 Agent、多个额度窗口、迷你条及原地刷新。
 
+## 下载
+
+从 [GitHub Releases](https://github.com/hjk41/agent_meter/releases/latest) 下载构建好的应用，无需安装 Python：
+
+- [Windows x64 · 0.2.0](https://github.com/hjk41/agent_meter/releases/download/0.2.0/AgentMeter-0.2.0-windows-x64.zip)：解压后双击 `AgentMeter.exe`。
+- [Apple Silicon · 0.2.0](https://github.com/hjk41/agent_meter/releases/download/0.2.0/AgentMeter-0.2.0-macos-arm64.zip)：macOS 13+，解压后将 `Agent Meter.app` 移到“应用程序”再打开。
+
+Release 同时提供 `SHA256SUMS.txt`。Mac 包使用临时签名，尚未使用 Developer ID 签名和 Apple 公证，首次打开可能需要在“系统设置 → 隐私与安全性”中确认。
+
 ## 运行
 
 Windows：双击 `dist/AgentMeter.exe`。macOS：双击 `Agent Meter.app`，菜单栏图标可显示窗口、刷新或退出。打包后的应用均无需额外安装 Python。本机 Codex 官方组件用于读取 Codex 额度和完成 OAuth；Claude 可独立使用浏览器 OAuth，不需要安装 Claude Code，状态栏采集仍为可选方式。
 
-GitHub 仓库提供源码，`dist/` 是本地构建输出，不纳入版本控制。EXE 在 Windows 构建，`.app` 在 macOS 构建；从源码运行与打包步骤见下方“开发与验证”。macOS 版本需要 macOS 13 或更高版本；构建使用 Python 3.10+，支持 Apple Silicon，在 Intel Mac 上构建则生成 Intel 应用。
+GitHub 仓库提供源码，`dist/` 是本地构建输出，不纳入版本控制。发布仅分发 Windows x64 与 Apple Silicon 两个版本。EXE 在 Windows 构建，`.app` 在 Apple Silicon Mac 构建；从源码运行与打包步骤见下方“开发与验证”。构建使用 Python 3.10+。
 
 窗口右上角 × 隐藏到托盘 / 菜单栏；图标菜单退出。Windows 为 `Ctrl + Alt + M`，macOS 为 `Control + Option + M`，显示 / 隐藏窗口；如果快捷键被其他程序占用，可以使用图标菜单。macOS 作为菜单栏应用运行，不占 Dock 图标。
 
 - 拖动顶部标题或空白背景移动悬浮窗。
+- 迷你条的文字、额度、按钮和背景均可拖动窗口；单击仍打开详情、设置或展开，拖动结束不会误触单击。
 - 每个 Agent 是可拖动的方格。点击查看详情；方向键也可调整排序。
 - 额度刷新会原地更新数值、进度条和状态，不重建主窗口；迷你条与已打开的详情窗口也会保留位置和布局。
 - 检测到读数过期时会立即补刷一次（每 5 秒检查，休眠唤醒后也适用）。补刷失败或仍返回过期窗口时保留旧读数，等待下一次定时刷新；成功取得有效读数后恢复过期检测。
 - Cursor 额度接口允许最多 60 秒的响应等待，以兼容服务端慢请求。服务异常、请求限流和响应超时分别提示；发生错误时保留上次真实额度，等待自动刷新。
 - 设置 → 显示 → 显示的 Agent，可选择要显示的工具（至少 1 项）。隐藏的 Agent 同时从主窗口和迷你条移除，并暂停自动采集及提醒；之后可重新勾选。
 - 方格可同时显示最多 3 个额度窗口及各自进度，更多窗口会显示剩余项数；迷你条显示最多 2 个窗口，Cursor 简写为“其他”和“Auto”。额度标签与数值靠近排成一组，两组之间留出明显间距；低额度只强调对应数值。
-- − 收起为双行信息签，↗ 展开：上行是 Agent 名称，下行是额度；各 Agent 无独立大框，用细分隔线区分。设置里选择 1–3 个重点 Agent，跟随主窗口顺序。进入迷你模式时按当前额度组成布局，只固定数字槽和小型 +N 提示槽；刷新不改变宽度。新出现的额度立即计入 +N，悬停或点击可查看全部额度与重置时间，再次进入迷你模式会重新排入最多 2 个额度窗口。
+- − 收起为双行信息签，↗ 展开：上行是 Agent 名称，下行是额度；左端是窄拖柄，右端是紧凑的设置 / 展开双按钮组。各 Agent 无独立大框，用细分隔线区分。设置里选择 1–3 个重点 Agent，跟随主窗口顺序。进入迷你模式时按当前额度组成布局，只固定数字槽和小型 +N 提示槽；刷新不改变宽度。新出现的额度立即计入 +N，悬停或点击可查看全部额度与重置时间，再次进入迷你模式会重新排入最多 2 个额度窗口。
 - 紧凑 2×2 与横向 4 个方格可切换，支持浅色 / 深色 / 跟随系统、置顶、背景透明度、开机启动和低额度提醒。
 - 设置 → 网络只配置一个共享代理（系统代理或自定义 HTTP / HTTPS / SOCKS5 地址），勾选哪些 Agent 使用它。未勾选的 Agent 直连，并清除其子进程继承的代理环境变量。默认勾选 Cursor、Codex、Claude。代理不应带用户名和密码。
 - 代理用于本工具的采集请求与它启动的登录组件；外部浏览器、已运行的客户端仍使用自身网络设置。豆包独立额度查询使用共享代理的选择，下次刷新立即生效。备用桌面版连接的代理通过启动参数传入，本机额度连接始终直连。
@@ -110,7 +120,19 @@ Finder 启动不依赖终端 PATH：Codex 支持 `~/.local/bin/codex`、官方 s
 
 macOS `.app` 使用 [PyInstaller 应用包](https://pyinstaller.org/en/stable/spec-files.html#spec-file-options-for-a-macos-bundle)及本机临时签名构建，适合本机部署；尚未使用 Apple Developer ID 签名或公证。
 
-已在 macOS 26.6.2 / Apple Silicon 验证 Cocoa 窗口、全局快捷键注册、应用包签名及 Finder 启动后的真实 Codex / Cursor 额度刷新；Cursor 的两个额度池均可显示。macOS 的 Claude OAuth 与豆包加密协议通过受控测试，真实账号额度尚未验证。Windows 58 项测试全部通过；macOS 同一套测试通过，其中 1 项 Windows DPAPI 测试跳过。
+已在 macOS 26.6.2 / Apple Silicon 验证 Cocoa 窗口、全局快捷键注册、应用包签名及 Finder 启动后的真实 Codex / Cursor 额度刷新；Cursor 的两个额度池均可显示。macOS 的 Claude OAuth 与豆包加密协议通过受控测试，真实账号额度尚未验证。Windows 59 项测试全部通过；macOS 同一套测试中 Windows DPAPI 测试跳过。每次发布会在两个平台重新运行测试，并验证构建好的应用能启动。
+
+## 发布新版本
+
+更新 `agent_meter/__init__.py` 的版本号并添加 `docs/releases/<版本>.md`，提交后推送同名标签，例如：
+
+```sh
+git tag 0.2.0
+git push origin main
+git push origin 0.2.0
+```
+
+标签不带 `v` 前缀，必须与源码版本一致。GitHub Actions 自动在 Windows x64 和 Apple Silicon 上测试、构建、验证启动、打包许可证，并核对两个包的版本、提交和 SHA256。全部成功后发布 Release。失败时不会发布不完整的版本，可在 Actions 的手动运行入口填写已有标签重试；已发布版本需使用新标签，避免替换用户已下载的文件。
 
 `--diagnose` 输出经过整理的额度状态，不输出令牌或账号身份。采集器在后台运行，不会阻塞窗口；退出时未完成的请求最长等待网络超时结束。
 

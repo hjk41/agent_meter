@@ -36,8 +36,9 @@ def label(text, size=12, color=None, bold=False):
     w.setTextFormat(Qt.TextFormat.PlainText)
     return w
 
-def button(text, tip, callback, width=None):
-    w=QPushButton(text)
+def button(text, tip, callback, width=None, drag_owner=None):
+    w=MiniDragButton(drag_owner) if drag_owner else QPushButton()
+    w.setText(text)
     if text in ('⚙','↗','↻','−','×','●','○'):
         w.setFont(QFont('Apple Symbols' if sys.platform == 'darwin' else 'Segoe UI Symbol',10))
     w.setToolTip(tip); w.setAccessibleName(tip)
@@ -146,7 +147,8 @@ class Surface(QWidget):
         p=QPainter(self); p.setRenderHint(QPainter.RenderHint.Antialiasing)
         c=QColor(self.owner.colors['surface']); c.setAlpha(round(255*self.owner.store.settings['opacity']/100))
         p.setBrush(c); p.setPen(QPen(QColor(self.owner.colors['border']),1))
-        p.drawRoundedRect(self.rect().adjusted(1,1,-1,-1),18,18)
+        radius=14 if self.owner.store.settings['mini'] else 18
+        p.drawRoundedRect(self.rect().adjusted(1,1,-1,-1),radius,radius)
     def mousePressEvent(self,event):
         if event.button()==Qt.MouseButton.LeftButton: self.start=event.globalPosition().toPoint()-self.owner.pos()
     def mouseMoveEvent(self,event):
@@ -156,10 +158,51 @@ class Surface(QWidget):
         if self.start is not None:
             self.start=None; self.owner.save_position()
 
-class MiniTag(QPushButton):
+class MiniGrip(QWidget):
+    def __init__(self,owner):
+        super().__init__(owner.surface); self.owner=owner
+        self.setFixedSize(8,22); self.setToolTip('拖动窗口（整条均可拖动）')
+        self.setAccessibleName('拖动窗口')
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+    def paintEvent(self,event):
+        painter=QPainter(self); painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        color=QColor(self.owner.colors['muted']); color.setAlphaF(.55)
+        painter.setPen(Qt.PenStyle.NoPen); painter.setBrush(color)
+        for y in (6,11,16): painter.drawEllipse(QPoint(4,y),1,1)
+
+class MiniDragButton(QPushButton):
+    """Allow dragging a mini-bar control without triggering its click action."""
+    def __init__(self, owner):
+        super().__init__('',owner.surface)
+        self.drag_owner=owner; self.drag_press=None; self.drag_origin=None; self.dragging=False
+
+    def mousePressEvent(self,event):
+        if event.button()==Qt.MouseButton.LeftButton:
+            self.drag_press=event.globalPosition().toPoint()
+            self.drag_origin=self.drag_owner.pos(); self.dragging=False
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self,event):
+        if self.drag_press is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            delta=event.globalPosition().toPoint()-self.drag_press
+            if self.dragging or delta.manhattanLength()>=QApplication.startDragDistance():
+                self.dragging=True; self.setDown(False)
+                self.drag_owner.move(self.drag_origin+delta)
+                event.accept(); return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self,event):
+        if event.button()==Qt.MouseButton.LeftButton and self.dragging:
+            self.setDown(False); self.drag_owner.save_position()
+            self.drag_press=None; self.drag_origin=None; self.dragging=False
+            event.accept(); return
+        self.drag_press=None; self.drag_origin=None; self.dragging=False
+        super().mouseReleaseEvent(event)
+
+class MiniTag(MiniDragButton):
     """Two lines with tight label/value pairs and stable numeric slots."""
     def __init__(self, owner, provider):
-        super().__init__('',owner.surface)
+        super().__init__(owner)
         self.owner=owner; self.provider=provider; self.display_text=''
         self.clicked.connect(lambda:owner.show_detail(provider))
         self.setFixedHeight(34)
@@ -523,20 +566,31 @@ class MeterWindow(QWidget):
         if cfg['mini']:
             self.layout().setContentsMargins(2,2,2,2)
             self.body.setContentsMargins(8,3,8,3)
-            row=QHBoxLayout(); row.setSpacing(4)
-            row.addWidget(app_logo(16))
+            row=QHBoxLayout(); row.setSpacing(0)
+            row.addWidget(MiniGrip(self)); row.addSpacing(8)
             first=True
             for p in self.visible_agents():
                 if p not in cfg['mini_ids']: continue
                 if not first:
+                    row.addSpacing(7)
                     divider=QWidget(); divider.setFixedSize(1,22)
                     divider.setStyleSheet(f'background:{c["border"]};')
                     divider.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
                     row.addWidget(divider)
+                    row.addSpacing(7)
                 first=False
                 b=MiniTag(self,p); self.mini_buttons[p]=b; row.addWidget(b)
+            row.addSpacing(6)
+            actions=QFrame(self.surface); actions.setObjectName('miniActions'); actions.setFixedSize(44,30)
+            actions.setStyleSheet(f'''QFrame#miniActions {{background:{c["button"]};border:0;
+                border-left:1px solid {c["border"]};border-top-right-radius:9px;border-bottom-right-radius:9px;}}''')
+            controls=QHBoxLayout(actions); controls.setContentsMargins(3,1,0,1); controls.setSpacing(0)
             for text,tip,callback in [('⚙','配置迷你条',self.show_settings),('↗','展开用量窗口',self.toggle_mini)]:
-                control=button(text,tip,callback,24); control.setFixedHeight(34); row.addWidget(control)
+                control=button(text,tip,callback,20,drag_owner=self); control.setFixedHeight(28)
+                control.setStyleSheet(f'''QPushButton {{background:transparent;border:0;border-radius:5px;padding:0;min-height:0;color:{c["muted"]};}}
+                    QPushButton:hover {{background:{c["border"]};}} QPushButton:focus {{border:1px solid {c["accent"]};}}''')
+                controls.addWidget(control)
+            row.addWidget(actions)
             self.body.addLayout(row)
         else:
             self.layout().setContentsMargins(8,8,8,8)

@@ -2,6 +2,7 @@
 
 Agent Meter uses Python, Qt for Python (PySide6 Essentials / Shiboken6), Requests,
 urllib3, certifi, charset-normalizer, idna, PySocks and websocket-client, packaged with PyInstaller.
+macOS additionally uses keyring and its Python dependencies for native Keychain access.
 
 - Python: Python Software Foundation License — https://docs.python.org/3/license.html
 - Qt / PySide6 / Shiboken6: LGPL v3 / GPL v3 and third-party licenses — https://doc.qt.io/qtforpython-6/licenses.html
@@ -14,9 +15,14 @@ urllib3, certifi, charset-normalizer, idna, PySocks and websocket-client, packag
 - websocket-client: Apache 2.0 — https://github.com/websocket-client/websocket-client/blob/master/LICENSE
 - cryptography: Apache 2.0 / BSD — https://github.com/pyca/cryptography/blob/main/LICENSE
 - PyInstaller: GPL with bootloader exception — https://pyinstaller.org/en/stable/license.html
+- keyring: MIT — https://github.com/jaraco/keyring
 
 The application source is in this project. The bundled Qt libraries are dynamically
 loaded. Third-party source and license notices remain available from the projects above.
+Download packages include the license texts shipped by installed dependency wheels,
+plus the GNU LGPL v3 and GPL v3 texts in `third_party_licenses/`. Qt source is
+available at https://code.qt.io/cgit/qt/qtbase.git/ and Qt for Python / Shiboken
+source at https://code.qt.io/cgit/pyside/pyside-setup.git/ (version 6.11.2).
 
 Claude browser OAuth protocol research reference:
 https://github.com/character-s/claude-usage-bar-windows (BSD-2-Clause).

@@ -5,7 +5,8 @@ import unittest
 from unittest.mock import patch
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QProgressBar
 from PySide6.QtGui import QFontDatabase
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtTest import QTest
 from agent_meter.ui import MeterWindow, SettingsDialog
 from agent_meter.storage import Store
 from agent_meter.model import Snapshot, Quota
@@ -30,7 +31,7 @@ class WindowTests(unittest.TestCase):
             self.store.settings['mini_ids']=ids; self.window.render(); self.app.processEvents()
             buttons=[b for b in self.window.findChildren(QPushButton) if b.isVisible()]
             self.assertEqual(len(buttons),len(ids)+2)
-            centers=[b.geometry().center().y() for b in buttons]
+            centers=[b.mapTo(self.window,b.rect().center()).y() for b in buttons]
             self.assertLessEqual(max(centers)-min(centers),1)
             self.assertLess(self.window.height(),80)
             self.assertGreater(self.window.width(),150)
@@ -199,7 +200,7 @@ class WindowTests(unittest.TestCase):
         self.window.render(); self.app.processEvents()
         buttons=[b for b in self.window.findChildren(QPushButton) if b.isVisible()]
         self.assertTrue(any('>99%' in b.text() for b in buttons))
-        centers=[b.geometry().center().y() for b in buttons]
+        centers=[b.mapTo(self.window,b.rect().center()).y() for b in buttons]
         self.assertLessEqual(max(centers)-min(centers),1)
 
     def test_multiple_quota_windows_visible_on_tile_and_mini(self):
@@ -255,6 +256,25 @@ class WindowTests(unittest.TestCase):
         self.assertIn('5 小时：剩余 90%',tag.toolTip())
         self.assertEqual(self.window.geometry(),geometry)
         self.assertIs(self.window.mini_buttons['codex'],tag)
+
+    def test_mini_controls_drag_without_clicking_and_clicks_still_work(self):
+        self.store.settings['mini']=True; self.store.settings['mini_ids']=['cursor']
+        self.window.render(); self.app.processEvents()
+        controls=[self.window.mini_buttons['cursor']]+[
+            b for b in self.window.findChildren(QPushButton) if b.isVisible() and b.text() in ('⚙','↗')]
+        with patch.object(self.window,'show_detail') as detail:
+            QTest.mouseClick(controls[0],Qt.MouseButton.LeftButton)
+            detail.assert_called_once_with('cursor')
+        for control in controls:
+            clicked=[]; control.clicked.connect(lambda _,clicked=clicked:clicked.append(True))
+            position=self.window.pos()
+            QTest.mousePress(control,Qt.MouseButton.LeftButton,pos=QPoint(5,5))
+            QTest.mouseMove(control,QPoint(5+QApplication.startDragDistance()+12,5))
+            QTest.mouseRelease(control,Qt.MouseButton.LeftButton,pos=QPoint(5,5))
+            self.app.processEvents()
+            self.assertNotEqual(self.window.pos(),position)
+            self.assertEqual(clicked,[])
+            self.assertEqual(Store(self.tmp.name).settings['position'],[self.window.x(),self.window.y()])
 
     def test_claude_oauth_start_close_and_success_controls(self):
         class ImmediatePool:
