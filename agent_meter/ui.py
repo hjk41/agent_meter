@@ -156,6 +156,81 @@ class Surface(QWidget):
         if self.start is not None:
             self.start=None; self.owner.save_position()
 
+class MiniTag(QPushButton):
+    """Two lines with tight label/value pairs and stable numeric slots."""
+    def __init__(self, owner, provider):
+        super().__init__('',owner.surface)
+        self.owner=owner; self.provider=provider; self.display_text=''
+        self.clicked.connect(lambda:owner.show_detail(provider))
+        self.setFixedHeight(34)
+        c=owner.colors
+        self.setStyleSheet(f'''QPushButton {{background:transparent;border:1px solid transparent;
+            border-radius:6px;padding:0;min-height:0;}}
+            QPushButton:hover {{background:{c['button']};}}
+            QPushButton:focus {{border-color:{c['accent']};}}''')
+        self.content=QVBoxLayout(self); self.content.setContentsMargins(4,1,4,1); self.content.setSpacing(1)
+        def text_label(text, bold=False):
+            widget=QLabel(text,self)
+            widget.setTextFormat(Qt.TextFormat.PlainText)
+            font=QFont(FONT_FAMILY); font.setPixelSize(11)
+            if bold: font.setWeight(QFont.Weight.DemiBold)
+            widget.setFont(font); widget.setFixedHeight(14)
+            widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            return widget
+        header=QHBoxLayout(); header.setSpacing(3)
+        self.name=text_label('Claude' if provider=='claude' else PROVIDERS[provider][0],True)
+        self.name.setStyleSheet(f'color:{c["text"]};background:transparent;')
+        self.status_dot=text_label(''); self.status_dot.setFixedWidth(4)
+        self.status_dot.setStyleSheet(f'color:{c["warning"]};background:transparent;')
+        self.more=text_label(''); self.more.setFixedWidth(14)
+        self.more.setStyleSheet(f'color:{c["muted"]};background:transparent;')
+        header.addWidget(self.name); header.addWidget(self.status_dot); header.addStretch(); header.addWidget(self.more)
+        self.content.addLayout(header)
+        readings=QHBoxLayout(); readings.setContentsMargins(0,0,0,0); readings.setSpacing(12)
+        quotas=owner.snapshots[provider].quotas
+        self.quota_widgets=[]
+        for i in range(max(1,min(2,len(quotas)))):
+            group=QWidget(self); group.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            pair=QHBoxLayout(group); pair.setContentsMargins(0,0,0,0); pair.setSpacing(3)
+            fallback={'cursor':'其他','codex':'7d','claude':'5h','doubao':'5h'}[provider]
+            caption=mini_quota_name(provider,quotas[i].name) if i<len(quotas) else fallback
+            name=text_label(caption)
+            name.setStyleSheet(f'color:{c["muted"]};background:transparent;')
+            name.ensurePolished(); name.setFixedWidth(name.fontMetrics().horizontalAdvance(caption)+2)
+            value=text_label('')
+            samples=('100%','>99%','不限量') if provider=='doubao' else ('100%','>99%')
+            value.setFixedWidth(max(28,max(value.fontMetrics().horizontalAdvance(s) for s in samples)+1))
+            # Keep the gap after the label small. Spare digit space belongs at
+            # the end of this group, before the 12px gap to the next quota.
+            value.setAlignment(Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
+            pair.addWidget(name); pair.addWidget(value); readings.addWidget(group)
+            self.quota_widgets.append((group,name,value))
+        readings.addStretch(); self.content.addLayout(readings)
+        self.update_snapshot()
+        self.setFixedWidth(self.content.sizeHint().width()+2)
+
+    def text(self):
+        # The base button text stays empty; child labels draw the two lines.
+        return self.display_text
+
+    def update_snapshot(self):
+        snapshot=self.owner.snapshots[self.provider]; c=self.owner.colors
+        values=[]
+        for i,(_,name,value) in enumerate(self.quota_widgets):
+            quota=snapshot.quotas[i] if i<len(snapshot.quotas) else None
+            caption=mini_quota_name(self.provider,quota.name) if quota else ''
+            name.setText(name.fontMetrics().elidedText(caption,Qt.TextElideMode.ElideRight,name.width()))
+            value.setText(percent(quota) if quota else '—')
+            low=quota and quota.remaining<self.owner.store.settings['warning_threshold'] and percent(quota)!='不限量'
+            value.setStyleSheet(f'color:{c["warning"] if low else c["text"]};background:transparent;')
+            if quota: values.append(caption+percent(quota))
+        extra=max(0,len(snapshot.quotas)-len(self.quota_widgets))
+        self.more.setText(f'+{extra}' if 0<extra<10 else '+' if extra else '')
+        self.status_dot.setText('·' if self.owner.snapshot_status(snapshot) in ('error','stale') else '')
+        tip=PROVIDERS[self.provider][0]+' · '+quota_tooltip(snapshot)
+        self.setToolTip(tip); self.setAccessibleName(tip+'，点击查看详情')
+        self.display_text=self.name.text()+' '+(' '.join(values) or '—')+(f' +{extra}' if extra else '')
+
 class Tile(QWidget):
     def __init__(self, owner, provider):
         super().__init__()
@@ -426,27 +501,13 @@ class MeterWindow(QWidget):
         self.surface.update()
     def visible_agents(self):
         return [p for p in self.store.settings['order'] if p in self.store.settings['enabled_agents']]
-    def mini_button_data(self,p):
-        s=self.snapshots[p]; cfg=self.store.settings; c=self.colors
-        name='Claude' if p=='claude' else PROVIDERS[p][0]
-        values=' '.join(f'{mini_quota_name(p,q.name)}{percent(q)}' for q in s.quotas[:2])
-        if len(s.quotas)>2: values+=f' +{len(s.quotas)-2}'
-        text=name+' '+(values or '—')
-        if self.snapshot_status(s) in ('error','stale'): text+=' ·'
-        style=f'QPushButton {{background:{c["tile"]};border:1px solid {c["border"]};padding:4px 5px;}}'
-        if any(q.remaining<cfg['warning_threshold'] for q in s.quotas): style+=f'QPushButton {{color:{c["warning"]};}}'
-        return text,PROVIDERS[p][0]+' · '+quota_tooltip(s),style
     def update_data(self,providers=None):
         self.last_redraw=time.monotonic()
         providers=self.visible_agents() if providers is None else providers
         for p in providers:
             if self.store.settings['mini']:
                 b=self.mini_buttons.get(p)
-                if b:
-                    text,tip,style=self.mini_button_data(p)
-                    b.setText(b.fontMetrics().elidedText(text,Qt.TextElideMode.ElideRight,b.width()-12))
-                    b.setToolTip(tip); b.setAccessibleName(tip)
-                    if b.styleSheet()!=style: b.setStyleSheet(style)
+                if b: b.update_snapshot()
             elif p in self.tiles: self.tiles[p].update_snapshot()
             dialog=self.detail_dialogs.get(p)
             if dialog and dialog.isVisible(): self.fill_detail(dialog,p)
@@ -460,27 +521,25 @@ class MeterWindow(QWidget):
         clear(self.body); cfg=self.store.settings; c=self.colors
         self.mini_buttons={}; self.footer_status=None
         if cfg['mini']:
-            self.body.setContentsMargins(10,6,10,6)
-            row=QHBoxLayout(); row.setSpacing(5)
-            row.addWidget(app_logo(18))
+            self.layout().setContentsMargins(2,2,2,2)
+            self.body.setContentsMargins(8,3,8,3)
+            row=QHBoxLayout(); row.setSpacing(4)
+            row.addWidget(app_logo(16))
+            first=True
             for p in self.visible_agents():
                 if p not in cfg['mini_ids']: continue
-                text,tip,style=self.mini_button_data(p)
-                b=button(text,tip,lambda p=p:self.show_detail(p)); b.setStyleSheet(style)
-                font=QFont(FONT_FAMILY); font.setPixelSize(11); b.setFont(font)
-                # Reserve the normal two-window reading rather than sizing to
-                # long server names or the current percentage. Refresh is stable.
-                reserve={'cursor':'Cursor 其他100% Auto100% ·',
-                    'codex':'Codex 5h100% 7d100% +9 ·',
-                    'claude':'Claude 5h100% 7d100% +9 ·',
-                    'doubao':'豆包 5h不限量 7d不限量 +9 ·'}[p]
-                b.setFixedWidth(min(180,max(132,b.fontMetrics().horizontalAdvance(reserve)+14)))
-                b.setText(b.fontMetrics().elidedText(text,Qt.TextElideMode.ElideRight,b.width()-12))
-                self.mini_buttons[p]=b
-                row.addWidget(b)
-            row.addWidget(button('⚙','配置迷你条',self.show_settings,28)); row.addWidget(button('↗','展开用量窗口',self.toggle_mini,28))
+                if not first:
+                    divider=QWidget(); divider.setFixedSize(1,22)
+                    divider.setStyleSheet(f'background:{c["border"]};')
+                    divider.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+                    row.addWidget(divider)
+                first=False
+                b=MiniTag(self,p); self.mini_buttons[p]=b; row.addWidget(b)
+            for text,tip,callback in [('⚙','配置迷你条',self.show_settings),('↗','展开用量窗口',self.toggle_mini)]:
+                control=button(text,tip,callback,24); control.setFixedHeight(34); row.addWidget(control)
             self.body.addLayout(row)
         else:
+            self.layout().setContentsMargins(8,8,8,8)
             self.body.setContentsMargins(14,12,14,12)
             header=QHBoxLayout(); header.setSpacing(4)
             header.addWidget(app_logo(22))

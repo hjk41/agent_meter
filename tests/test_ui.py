@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QProgressBar
 from PySide6.QtGui import QFontDatabase
+from PySide6.QtCore import QPoint
 from agent_meter.ui import MeterWindow, SettingsDialog
 from agent_meter.storage import Store
 from agent_meter.model import Snapshot, Quota
@@ -225,11 +226,35 @@ class WindowTests(unittest.TestCase):
         self.assertLessEqual(button.width(),180)
         self.assertIn('其他模型 · 月度',button.toolTip())
         self.assertIn('Cursor / Auto 模型 · 月度',button.toolTip())
+        _,first_name,first_value=button.quota_widgets[0]
+        _,second_name,_=button.quota_widgets[1]
+        self.assertEqual(first_name.text(),'其他')
+        self.assertEqual(second_name.text(),'Auto')
+        name_end=first_name.mapTo(button,QPoint(0,0)).x()+first_name.width()
+        value_start=first_value.mapTo(button,QPoint(0,0)).x()
+        value_text_end=value_start+first_value.fontMetrics().horizontalAdvance('5%')
+        second_start=second_name.mapTo(button,QPoint(0,0)).x()
+        self.assertEqual(value_start-name_end,3)
+        self.assertGreaterEqual(second_start-value_text_end,12)
+        self.assertGreater(first_name.mapTo(button,QPoint(0,0)).y(),button.name.mapTo(button,QPoint(0,0)).y())
         self.window.received('cursor',Snapshot('cursor','live','已连接',quotas=[
             Quota('其他模型 · 月度',100),Quota('Cursor / Auto 模型 · 月度',100)]))
         self.app.processEvents()
         self.assertEqual(button.text(),'Cursor 其他100% Auto100%')
         self.assertEqual(self.window.geometry(),geometry)
+
+    def test_new_mini_quota_is_discoverable_without_resizing(self):
+        self.store.settings['mini']=True; self.store.settings['mini_ids']=['codex']
+        self.window.snapshots['codex']=Snapshot('codex','live','已连接',quotas=[Quota('7 天',45)])
+        self.window.render(); self.app.processEvents()
+        tag=self.window.mini_buttons['codex']; geometry=self.window.geometry()
+        self.window.received('codex',Snapshot('codex','live','已连接',quotas=[
+            Quota('7 天',40),Quota('5 小时',90)]))
+        self.app.processEvents()
+        self.assertEqual(tag.more.text(),'+1')
+        self.assertIn('5 小时：剩余 90%',tag.toolTip())
+        self.assertEqual(self.window.geometry(),geometry)
+        self.assertIs(self.window.mini_buttons['codex'],tag)
 
     def test_claude_oauth_start_close_and_success_controls(self):
         class ImmediatePool:
