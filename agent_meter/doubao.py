@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 from urllib.parse import urlparse
 
@@ -169,12 +170,24 @@ def collect_doubao(directory=None, network=None):
                         '豆包 · 独立订阅额度查询' if directory is not None else SOURCE)
 
 def installed_app():
+    if sys.platform == 'darwin':
+        from .platform_support import mac_app_executable
+        path = mac_app_executable('Doubao') or mac_app_executable('豆包')
+        if path: return path
+        raise DoubaoError('未找到豆包桌面版，请先安装并登录')
     base = Path(os.environ.get('LOCALAPPDATA', Path.home()/'AppData/Local'))/'Doubao/Application'
     for path in (base/'app/Doubao.exe', base/'Doubao.exe'):
         if path.is_file(): return path
     raise DoubaoError('未找到豆包桌面版，请先安装并登录')
 
 def app_running():
+    if sys.platform == 'darwin':
+        path = str(installed_app())
+        result = subprocess.run(['/bin/ps', '-axo', 'command='],
+            capture_output=True, text=True, timeout=4)
+        if result.returncode != 0:
+            raise DoubaoError('无法检查豆包是否已退出，请稍后重试')
+        return any(line == path or line.startswith(path + ' ') for line in result.stdout.splitlines())
     result = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq Doubao.exe', '/FO', 'CSV', '/NH'],
         capture_output=True, text=True, timeout=4, creationflags=CREATE_NO_WINDOW)
     if result.returncode != 0:

@@ -29,7 +29,7 @@ class SessionTests(unittest.TestCase):
                     (host,'private-conversation','unrelated',b'')])
                 db.commit()
             before=database.read_bytes()
-            with patch.object(session,'dpapi',return_value=key):
+            with patch.object(session,'dpapi',return_value=key), patch.object(session.sys,'platform','win32'):
                 self.assertEqual(session.local_cookies(profile),{'sessionid':value})
             self.assertEqual(database.read_bytes(),before)
             with self.assertRaises(session.SessionError):session.decrypt_cookie(b'v20unsupported',key,host)

@@ -3,12 +3,16 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import sys
 from urllib.parse import urlparse
 from .model import PROVIDERS, Snapshot, DEFAULT_REFRESH_SECONDS
 
 def data_dir():
-    return Path(os.environ.get('AGENT_METER_DATA_DIR') or
-                (Path(os.environ.get('LOCALAPPDATA', Path.home()))/'AgentMeter'))
+    override = os.environ.get('AGENT_METER_DATA_DIR')
+    if override: return Path(override)
+    if sys.platform == 'darwin':
+        return Path.home()/'Library/Application Support/AgentMeter'
+    return Path(os.environ.get('LOCALAPPDATA', Path.home()))/'AgentMeter'
 
 DEFAULTS = {'order': ['doubao', 'codex', 'claude', 'cursor'], 'mini_ids': ['claude', 'cursor'],
             'enabled_agents': list(PROVIDERS),

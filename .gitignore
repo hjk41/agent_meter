@@ -12,6 +12,9 @@ dist/
 .env.*
 !.env.example
 *.dpapi.json
+*.keychain.json
+agent-meter.icns
+*.source.tar
 quota-cache.json
 claude-quota.json
 settings.json

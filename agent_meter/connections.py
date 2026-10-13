@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import queue
 import subprocess
+import sys
 import threading
 import time
 from urllib.parse import urlparse
@@ -22,6 +23,12 @@ def connection_description(provider):
     }[provider]
 
 def open_local_cursor():
+    if sys.platform == 'darwin':
+        from .platform_support import mac_app
+        app = mac_app('Cursor')
+        if not app: return False
+        subprocess.Popen(['/usr/bin/open', str(app)])
+        return True
     candidates = [Path(os.environ.get('LOCALAPPDATA',''))/'Programs/cursor/Cursor.exe',
                   Path(os.environ.get('ProgramFiles','C:/Program Files'))/'Cursor/Cursor.exe']
     for path in candidates:

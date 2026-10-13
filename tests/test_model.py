@@ -19,6 +19,7 @@ class QuotaTests(unittest.TestCase):
             binary.parent.mkdir(parents=True)
             binary.touch()
             with patch.dict(os.environ, {'LOCALAPPDATA':tmp, 'APPDATA':tmp}, clear=True), \
+                 patch('agent_meter.providers.sys.platform', 'win32'), \
                  patch('agent_meter.providers.shutil.which', return_value=None):
                 self.assertEqual(codex_command(), [str(binary)])
 

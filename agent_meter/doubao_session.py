@@ -1,4 +1,4 @@
-"""Read-only consumer membership quota requests with a Windows-encrypted session.
+"""Read-only consumer membership quotas with platform-encrypted sessions.
 
 Protocol research: OxygenAILab/AskDoubao. No generation endpoints are used.
 """
@@ -8,8 +8,11 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import sys
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.padding import PKCS7
 import requests
 
 from .claude_oauth import dpapi
@@ -29,22 +32,40 @@ def clean_cookies(cookies):
             and isinstance(value,str) and 0<len(value)<=16384
             and not any(c in value for c in '\r\n\x00')}
 
-def decrypt_cookie(blob, key, host):
+def decrypt_cookie(blob, key, host, mac=False):
     if blob[:3] not in (b'v10', b'v11'):
         raise SessionError('本机登录加密格式暂不支持，请使用桌面版连接')
-    raw = AESGCM(key).decrypt(blob[3:15], blob[15:], None)
+    if mac:
+        if blob[:3] != b'v10':
+            raise SessionError('本机登录加密格式暂不支持，请使用桌面版连接')
+        decryptor = Cipher(algorithms.AES(key), modes.CBC(b' ' * 16)).decryptor()
+        padded = decryptor.update(blob[3:]) + decryptor.finalize()
+        unpadder = PKCS7(128).unpadder()
+        raw = unpadder.update(padded) + unpadder.finalize()
+    else:
+        raw = AESGCM(key).decrypt(blob[3:15], blob[15:], None)
     digest = hashlib.sha256(host.encode('utf-8')).digest()
     if raw[:32] == digest: raw = raw[32:]
     return raw.decode('utf-8')
 
 def local_cookies(profile=None):
     """Open only Doubao's cookie DB read-only; never copy a browser profile."""
-    profile = Path(profile or Path(os.environ.get('LOCALAPPDATA', Path.home()/'AppData/Local'))/'Doubao/User Data')
+    mac = sys.platform == 'darwin'
+    if profile is None:
+        profile = (Path.home()/'Library/Application Support/Doubao' if mac else
+            Path(os.environ.get('LOCALAPPDATA', Path.home()/'AppData/Local'))/'Doubao/User Data')
+    profile = Path(profile)
     try:
-        state = json.loads((profile/'Local State').read_text(encoding='utf-8'))
-        encrypted = base64.b64decode(state['os_crypt']['encrypted_key'], validate=True)
-        if not encrypted.startswith(b'DPAPI'): raise ValueError()
-        key = dpapi(encrypted[5:], True)
+        if mac:
+            from .secure_storage import keychain_backend
+            password = keychain_backend().get_password('Doubao Safe Storage', 'Doubao')
+            if not password: raise ValueError()
+            key = hashlib.pbkdf2_hmac('sha1', password.encode('utf-8'), b'saltysalt', 1003, 16)
+        else:
+            state = json.loads((profile/'Local State').read_text(encoding='utf-8'))
+            encrypted = base64.b64decode(state['os_crypt']['encrypted_key'], validate=True)
+            if not encrypted.startswith(b'DPAPI'): raise ValueError()
+            key = dpapi(encrypted[5:], True)
         database = profile/'Default/Network/Cookies'
         if not database.is_file(): database = profile/'Default/Cookies'
         connection = sqlite3.connect(database.resolve().as_uri()+'?mode=ro', uri=True, timeout=.2)
@@ -55,7 +76,7 @@ def local_cookies(profile=None):
                 f'WHERE host_key IN ({hosts}) AND name IN ({names})', (*COOKIE_HOSTS,*COOKIE_NAMES))
             cookies = {}
             for host,name,value,blob in rows:
-                try: value = value or decrypt_cookie(blob,key,host)
+                try: value = value or decrypt_cookie(blob,key,host,mac=mac)
                 except Exception: continue
                 if value: cookies[name] = value
         finally:
@@ -68,7 +89,8 @@ def local_cookies(profile=None):
 
 class SessionStore:
     def __init__(self, directory):
-        self.path = Path(directory)/'doubao-session.dpapi.json'
+        suffix = 'keychain' if sys.platform == 'darwin' else 'dpapi'
+        self.path = Path(directory)/f'doubao-session.{suffix}.json'
 
     def load(self):
         try:
@@ -138,7 +160,7 @@ def read_http_quota(directory, network, session_factory=None):
             if not isinstance(body,dict) or body.get('code') != 0:
                 raise SessionError('豆包会话需要重新登录或验证，请在官方客户端处理后刷新')
             result = quota_fields(body)
-        # Persist only after the server accepts the session, using current-user DPAPI.
+        # Persist only after acceptance, using DPAPI or a Keychain-held AES key.
         store.save(cookies)
         return result
     except SessionError: raise

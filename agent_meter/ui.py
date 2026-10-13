@@ -19,6 +19,7 @@ from .claude_oauth import begin_login, claude_client, safe_login_error
 from .doubao import start_connection, DoubaoError
 
 MIME = 'application/x-agent-meter-provider'
+FONT_FAMILY = 'Helvetica Neue' if sys.platform == 'darwin' else 'Segoe UI'
 
 def clear(layout):
     while layout.count():
@@ -30,7 +31,7 @@ def clear(layout):
 
 def label(text, size=12, color=None, bold=False):
     w=QLabel(text)
-    w.setFont(QFont('Segoe UI',size, QFont.Weight.DemiBold if bold else QFont.Weight.Normal))
+    w.setFont(QFont(FONT_FAMILY,size, QFont.Weight.DemiBold if bold else QFont.Weight.Normal))
     if color: w.setStyleSheet('color:'+color+'; background:transparent;')
     w.setTextFormat(Qt.TextFormat.PlainText)
     return w
@@ -38,7 +39,7 @@ def label(text, size=12, color=None, bold=False):
 def button(text, tip, callback, width=None):
     w=QPushButton(text)
     if text in ('⚙','↗','↻','−','×','●','○'):
-        w.setFont(QFont('Segoe UI Symbol',10))
+        w.setFont(QFont('Apple Symbols' if sys.platform == 'darwin' else 'Segoe UI Symbol',10))
     w.setToolTip(tip); w.setAccessibleName(tip)
     if width: w.setFixedWidth(width)
     w.clicked.connect(callback)
@@ -290,7 +291,7 @@ class SettingsDialog(QDialog):
         self.theme=QComboBox(); self.theme.addItems(['跟随系统','浅色','深色']); self.theme.setCurrentIndex(['system','light','dark'].index(self.config['theme']))
         form.addRow('主题',self.theme)
         self.pinned=QCheckBox('始终置顶'); self.pinned.setChecked(self.config['pinned']); form.addRow('',self.pinned)
-        self.startup=QCheckBox('登录 Windows 时启动'); self.startup.setChecked(owner.autostart_enabled()); form.addRow('',self.startup)
+        self.startup=QCheckBox('登录时启动'); self.startup.setChecked(owner.autostart_enabled()); form.addRow('',self.startup)
         self.interval=QSpinBox(); self.interval.setRange(30,600); self.interval.setSuffix(' 秒'); self.interval.setValue(self.config['refresh_seconds'])
         form.addRow('在线额度刷新间隔',self.interval)
         self.alerts=QCheckBox('首次低于阈值或从高额度降到阈值时提醒'); self.alerts.setChecked(self.config['notifications']); form.addRow('',self.alerts)
@@ -397,7 +398,7 @@ class MeterWindow(QWidget):
         return {'surface':'#20242c','text':'#ecedf2','muted':'#a1a9b7','border':'#383f4b','tile':'#292e38','track':'#3b4250','accent':'#80c9b7','warning':'#ffb271','button':'#303642'} if dark else {'surface':'#f5f7fa','text':'#263141','muted':'#697587','border':'#dce2e9','tile':'#ffffff','track':'#e5eaf0','accent':'#327e6d','warning':'#ac5d16','button':'#eaf0f5'}
     def dialog_style(self):
         c=self.colors
-        return f'''QDialog,QTabWidget::pane,QWidget {{background:{c['surface']};color:{c['text']};font-family:"Segoe UI";font-size:12px;}}
+        return f'''QDialog,QTabWidget::pane,QWidget {{background:{c['surface']};color:{c['text']};font-family:"{FONT_FAMILY}";font-size:12px;}}
         QLabel {{background:transparent;}} QPushButton {{background:{c['button']};border:1px solid {c['border']};border-radius:6px;padding:7px 10px;}}
         QPushButton:hover {{border-color:{c['accent']};}} QLineEdit,QSpinBox,QDoubleSpinBox,QComboBox,QDateTimeEdit {{background:{c['tile']};border:1px solid {c['border']};border-radius:4px;padding:5px;}}
         QTabBar::tab {{padding:8px 16px;}} QTabBar::tab:selected {{color:{c['accent']};}}'''
@@ -757,6 +758,9 @@ class MeterWindow(QWidget):
         from PySide6.QtCore import QUrl
         return QDesktopServices.openUrl(QUrl(url))
     def autostart_enabled(self):
+        if sys.platform=='darwin':
+            from .platform_support import mac_startup_enabled
+            return mac_startup_enabled()
         if sys.platform!='win32': return False
         import winreg
         try:
@@ -764,6 +768,9 @@ class MeterWindow(QWidget):
                 return bool(winreg.QueryValueEx(key,'AgentMeter')[0])
         except OSError: return False
     def set_autostart(self,enabled):
+        if sys.platform=='darwin':
+            from .platform_support import set_mac_startup
+            set_mac_startup(enabled); return
         if sys.platform!='win32': return
         import winreg
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER,r'Software\Microsoft\Windows\CurrentVersion\Run') as key:

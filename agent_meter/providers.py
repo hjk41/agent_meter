@@ -1,4 +1,4 @@
-"""Read-only collectors; independent Claude OAuth tokens use DPAPI storage."""
+"""Read-only collectors using platform-native client and credential locations."""
 import json
 import os
 from pathlib import Path
@@ -6,6 +6,7 @@ import queue
 import shutil
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
 import requests
@@ -42,8 +43,21 @@ def http_session(network):
 def codex_command():
     explicit = os.environ.get('AGENT_METER_CODEX_EXE')
     if explicit and Path(explicit).is_file(): return [explicit]
-    found = shutil.which('codex.exe')
+    found = shutil.which('codex.exe' if sys.platform == 'win32' else 'codex')
     if found: return [found]
+    if sys.platform == 'darwin':
+        from .platform_support import mac_app
+        candidates = [Path.home()/'.local/bin/codex',
+            Path.home()/'.codex/packages/standalone/current/bin/codex',
+            Path('/opt/homebrew/bin/codex'), Path('/usr/local/bin/codex')]
+        for name in ('Codex', 'ChatGPT'):
+            app = mac_app(name)
+            if app:
+                candidates += [app/'Contents/Resources/codex',
+                               app/'Contents/Resources/bin/codex']
+        for path in candidates:
+            if path.is_file() and os.access(path, os.X_OK): return [str(path)]
+        raise FileNotFoundError('Codex CLI')
     # The ChatGPT desktop app installs its own Codex binary outside PATH.
     # Its versioned bin directory changes when the app updates.
     local_appdata = Path(os.environ['LOCALAPPDATA']) if os.environ.get('LOCALAPPDATA') else Path.home()/'AppData/Local'
@@ -127,7 +141,8 @@ def collect_codex(network):
             if stream: stream.close()
 
 def cursor_database():
-    return Path(os.environ.get('APPDATA',Path.home()/'AppData/Roaming'))/'Cursor/User/globalStorage/state.vscdb'
+    from .platform_support import application_support
+    return application_support()/'Cursor/User/globalStorage/state.vscdb'
 
 def parse_cursor(data, now=None):
     windows = []

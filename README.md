@@ -1,6 +1,6 @@
 # Agent Meter
 
-Windows 原生半透明悬浮窗，用于集中显示个人 Agent 套餐额度。正式应用没有“演示”标识，也没有模拟用量。
+Windows / macOS 原生半透明悬浮窗，用于集中显示个人 Agent 套餐额度。正式应用没有“演示”标识，也没有模拟用量。
 
 ![Agent Meter 显示示例](docs/images/overview.png)
 
@@ -8,11 +8,11 @@ Windows 原生半透明悬浮窗，用于集中显示个人 Agent 套餐额度�
 
 ## 运行
 
-双击 `dist/AgentMeter.exe`。无需管理员权限，也无需额外安装 Python。本机 Codex 官方组件用于读取 Codex 额度和完成 OAuth；Claude 可独立使用浏览器 OAuth，不需要安装 Claude Code，状态栏采集仍为可选方式。
+Windows：双击 `dist/AgentMeter.exe`。macOS：双击 `Agent Meter.app`，菜单栏图标可显示窗口、刷新或退出。打包后的应用均无需额外安装 Python。本机 Codex 官方组件用于读取 Codex 额度和完成 OAuth；Claude 可独立使用浏览器 OAuth，不需要安装 Claude Code，状态栏采集仍为可选方式。
 
-GitHub 仓库提供源码，`dist/` 是本地构建输出，不纳入版本控制。从源码运行与生成 EXE 的步骤见下方“开发与验证”。
+GitHub 仓库提供源码，`dist/` 是本地构建输出，不纳入版本控制。EXE 在 Windows 构建，`.app` 在 macOS 构建；从源码运行与打包步骤见下方“开发与验证”。macOS 版本需要 macOS 13 或更高版本；构建使用 Python 3.10+，支持 Apple Silicon，在 Intel Mac 上构建则生成 Intel 应用。
 
-窗口右上角 × 隐藏到托盘；托盘菜单退出。`Ctrl + Alt + M` 显示 / 隐藏；如果快捷键被其他程序占用，可以使用托盘图标。
+窗口右上角 × 隐藏到托盘 / 菜单栏；图标菜单退出。Windows 为 `Ctrl + Alt + M`，macOS 为 `Control + Option + M`，显示 / 隐藏窗口；如果快捷键被其他程序占用，可以使用图标菜单。macOS 作为菜单栏应用运行，不占 Dock 图标。
 
 - 拖动顶部标题或空白背景移动悬浮窗。
 - 每个 Agent 是可拖动的方格。点击查看详情；方向键也可调整排序。
@@ -58,7 +58,7 @@ Claude OAuth 参考 [claude-usage-bar-windows](https://github.com/character-s/cl
 
 本机实际验证过 Cursor 的两个额度池、Codex 的 7 天窗口，以及豆包桌面版 2.31.4 返回的 5 小时、7 天额度与重置时间。Claude OAuth 已验证 PKCE、状态校验、取消、加密存储、令牌刷新及用量解析；网络协议使用受控响应验证，真实账号授权和真实 Claude 额度尚未验证。没有返回窗口时明确显示未知。可选状态栏方式需要已安装并登录的 Claude Code 新会话返回 `rate_limits`。应用不会主动发起付费模型请求。
 
-豆包：在官方客户端登录并退出一次，然后在本工具刷新，或详情 → 连接管理 → 复用本机登录并刷新。已验证客户端完全关闭时，独立查询仍能读取同一账号的 5 小时、7 天窗口及重置时间。本工具只读豆包域名下必要的登录 Cookie，不复制浏览器资料、不读取聊天；会话经 Windows DPAPI 加密保存在本机。客户端运行导致登录库锁定时使用已加密保存的会话；登录失效时提示在官方客户端重新登录，不把未知额度显示为 100%。
+豆包：在官方客户端登录并退出一次，然后在本工具刷新，或详情 → 连接管理 → 复用本机登录并刷新。Windows 已验证客户端完全关闭时，独立查询仍能读取同一账号的 5 小时、7 天窗口及重置时间。本工具只读豆包域名下必要的登录 Cookie，不复制浏览器资料、不读取聊天；会话在本机加密保存。macOS 使用豆包自己的 Safe Storage 钥匙串解密登录 Cookie；客户端格式不兼容时可使用备用桌面连接。客户端运行导致登录库锁定时使用已加密保存的会话；登录失效时提示在官方客户端重新登录，不把未知额度显示为 100%。
 
 独立查询参考 [AskDoubao 的会话与 HTTP 协议](https://github.com/OxygenAILab/AskDoubao)，仅调用 `/alice/commerce/sale/subscription/quota/summary/`，请求个人 `membership` 额度，不调用生成接口或读取账单。额度缓存只接收白名单字段；保留“不到 1%”精度及未知状态，不直接采用参考项目的图片、视频分类。
 
@@ -72,15 +72,17 @@ Cursor 接口来自本机客户端，属于可能变化的内部接口，并非�
 
 ## 数据与采集配置
 
-应用设置与不含身份信息的额度快照保存在 `%LOCALAPPDATA%/AgentMeter/`。Cursor、Codex 以及复用的 Claude Code 登录留在原客户端。独立 Claude OAuth 令牌保存在同目录 `claude-oauth.dpapi.json`，豆包复用会话保存在 `doubao-session.dpapi.json`；均通过 Windows DPAPI 绑定当前 Windows 用户加密，不提供明文后备存储。换电脑需在该电脑重新登录，不应复制这些凭据文件。授权码、PKCE 校验值只留在内存，不写入设置、额度缓存或日志。
+应用设置与不含身份信息的额度快照：Windows 保存在 `%LOCALAPPDATA%/AgentMeter/`，macOS 保存在 `~/Library/Application Support/AgentMeter/`。Cursor、Codex 以及复用的 Claude Code 登录留在原客户端。Windows 的独立 OAuth 与豆包会话分别为 `claude-oauth.dpapi.json`、`doubao-session.dpapi.json`，通过当前用户 DPAPI 加密。macOS 对应文件为 `*.keychain.json`，使用 AES-GCM 加密，密钥仅保存在登录钥匙串 `AgentMeter` 中；钥匙串不可用时明确报错，不提供明文后备存储。macOS 可只读复用 Claude Code 钥匙串登录。换电脑需在该电脑重新登录，不应复制凭据文件。授权码、PKCE 校验值只留在内存，不写入设置、额度缓存或日志。
 
 Claude：设置 → 接入 → 启用采集，会备份原状态栏及 settings 配置，在 `~/.claude/settings.json` 安装采集命令。原有状态栏命令继续执行；采集文件只保存两个额度窗口与采集时间，不保存对话、路径、账号或 Token。设置 → 接入 → 停用采集可恢复原状态栏，不覆盖安装后被其他工具修改的配置。
 
 只有当前接口读数标为“已连接”。失败、超过当前刷新间隔加 1 分钟（至少 3 分钟）未更新，或额度窗口已过重置时间，会标为“旧数据”；不会自动补成 100%。详情可查看完整窗口、来源和采集时间。手动录入始终明确标注。
 
-设置可配置开机启动；默认关闭。移动 EXE 后如果已开启，需要重新保存开机启动设置。
+设置可配置登录时启动；默认关闭。Windows 使用当前用户启动项，macOS 使用 `~/Library/LaunchAgents/com.hjk41.agent-meter.plist`。退出应用不会自动重启；移动应用后如果已开启，需要重新保存登录启动设置。
 
 ## 开发与验证
+
+Windows：
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -89,6 +91,26 @@ python run.py --diagnose
 python -m unittest discover -s tests -v
 .\build.ps1
 ```
+
+macOS：
+
+```sh
+python3 -m venv .venv  # 使用 Python 3.10+，不要使用系统自带的 3.9
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python run.py
+python run.py --diagnose
+python -m unittest discover -s tests -v
+PYTHON=.venv/bin/python sh build-macos.sh
+ditto "dist/Agent Meter.app" "$HOME/Applications/Agent Meter.app"
+open "$HOME/Applications/Agent Meter.app"
+```
+
+Finder 启动不依赖终端 PATH：Codex 支持 `~/.local/bin/codex`、官方 standalone 安装、Homebrew 路径及桌面版 `Codex.app` / `ChatGPT.app` 内的组件，也可设置 `AGENT_METER_CODEX_EXE`。Cursor 使用 `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`；应用可以安装在 `/Applications` 或 `~/Applications`。使用本机各客户端自己的登录，不从 Windows 复制凭据。
+
+macOS `.app` 使用 [PyInstaller 应用包](https://pyinstaller.org/en/stable/spec-files.html#spec-file-options-for-a-macos-bundle)及本机临时签名构建，适合本机部署；尚未使用 Apple Developer ID 签名或公证。
+
+已在 macOS 26.6.2 / Apple Silicon 验证 Cocoa 窗口、全局快捷键注册、应用包签名及 Finder 启动后的真实 Codex / Cursor 额度刷新；Cursor 的两个额度池均可显示。macOS 的 Claude OAuth 与豆包加密协议通过受控测试，真实账号额度尚未验证。Windows 56 项测试全部通过；macOS 同一套测试通过，其中 1 项 Windows DPAPI 测试跳过。
 
 `--diagnose` 输出经过整理的额度状态，不输出令牌或账号身份。采集器在后台运行，不会阻塞窗口；退出时未完成的请求最长等待网络超时结束。
 

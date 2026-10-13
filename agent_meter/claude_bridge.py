@@ -35,7 +35,7 @@ process.stdin.on('end', () => {
       const bash = ['C:/Program Files/Git/bin/bash.exe', 'C:/Program Files/Git/usr/bin/bash.exe'].find(p => fs.existsSync(p));
       const options = {input:raw, encoding:'utf8', timeout:2500, windowsHide:true, stdio:['pipe','pipe','ignore']};
       const command = previous.command.trim().startsWith('"') ? '& '+previous.command : previous.command;
-      const output = bash ? cp.execFileSync(bash, ['-c', previous.command], options) : cp.execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], options);
+      const output = process.platform !== 'win32' ? cp.execFileSync('/bin/sh', ['-c', previous.command], options) : bash ? cp.execFileSync(bash, ['-c', previous.command], options) : cp.execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], options);
       process.stdout.write(output);
       return;
     } catch (_) {}

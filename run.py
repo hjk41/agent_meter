@@ -1,4 +1,4 @@
-"""Agent Meter Windows entrypoint. --diagnose collects safe quota summaries."""
+"""Agent Meter desktop entrypoint. --diagnose collects safe quota summaries."""
 import json
 import sys
 from agent_meter.storage import Store
@@ -19,7 +19,7 @@ def main():
         diagnose(); return
     from PySide6.QtWidgets import QApplication
     from PySide6.QtNetwork import QLocalServer, QLocalSocket
-    from PySide6.QtCore import QTimer
+    from PySide6.QtCore import QTimer, Qt
     from agent_meter.ui import MeterWindow, app_icon
     app=QApplication(sys.argv); app.setApplicationName('Agent Meter'); app.setOrganizationName('AgentMeter')
     app.setQuitOnLastWindowClosed(False); app.setWindowIcon(app_icon())
@@ -34,11 +34,17 @@ def main():
     smoke='--smoke-test' in sys.argv
     if smoke:
         import tempfile
+        import copy
         smoke_directory=tempfile.TemporaryDirectory()
         store=Store(smoke_directory.name)
+        store.settings=copy.deepcopy(Store().settings)
         store.settings['notifications']=False
     else: store=Store()
-    window=MeterWindow(store); window.show()
+    window=MeterWindow(store)
+    if sys.platform=='darwin':
+        # Tool windows remain available when another app is active.
+        window.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
+    window.show()
     if '--claude-login' in sys.argv:
         QTimer.singleShot(200,lambda:window.show_connection('claude'))
     if '--doubao-connection' in sys.argv:
@@ -56,7 +62,7 @@ def main():
             (Path.cwd()/'smoke-result.json').write_text(json.dumps(result),encoding='utf-8')
             if sys.stdout: print(json.dumps(result),flush=True)
             window.quit()
-        QTimer.singleShot(30000,finish_smoke)
+        QTimer.singleShot(90000,finish_smoke)
         # Exit promptly once the initial collection completes.
         smoke_check=QTimer()
         def check():
@@ -77,6 +83,13 @@ def main():
         hotkey=HotkeyFilter(); app.installNativeEventFilter(hotkey)
         registered=ctypes.windll.user32.RegisterHotKey(None,0xA17,0x0003|0x4000,0x4D)
         if registered: app.aboutToQuit.connect(lambda:ctypes.windll.user32.UnregisterHotKey(None,0xA17))
+    elif sys.platform=='darwin':
+        from agent_meter.macos_hotkey import MacHotkey
+        try:
+            hotkey=MacHotkey(window.toggle_visible)
+            app.aboutToQuit.connect(hotkey.close)
+        except OSError:
+            pass  # The menu bar icon is available if the shortcut is occupied.
     app.exec()
 
 if __name__=='__main__':

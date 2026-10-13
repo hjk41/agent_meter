@@ -16,6 +16,7 @@ from pathlib import Path
 import secrets
 import threading
 import time
+import sys
 from urllib.parse import urlencode, urlparse, parse_qs
 
 import requests
@@ -35,6 +36,9 @@ class Blob(ctypes.Structure):
     _fields_ = [('cbData', wintypes.DWORD), ('pbData', ctypes.POINTER(ctypes.c_ubyte))]
 
 def dpapi(data, decrypt=False):
+    if sys.platform == 'darwin':
+        from .secure_storage import mac_protect
+        return mac_protect(data, decrypt)
     if os.name != 'nt':
         raise OAuthError('令牌加密存储需要 Windows。')
     buffer = (ctypes.c_ubyte * len(data)).from_buffer_copy(data)
@@ -64,7 +68,8 @@ def dpapi(data, decrypt=False):
 
 class CredentialStore:
     def __init__(self, directory):
-        self.path = Path(directory) / 'claude-oauth.dpapi.json'
+        suffix = 'keychain' if sys.platform == 'darwin' else 'dpapi'
+        self.path = Path(directory) / f'claude-oauth.{suffix}.json'
 
     def load(self):
         if not self.path.exists(): return None
@@ -146,7 +151,15 @@ def token_response(data, previous=None):
 
 def local_credentials():
     """Read an existing CLI login without copying or rotating its refresh token."""
-    data = read_json(Path.home()/'.claude/.credentials.json', {}).get('claudeAiOauth')
+    raw = read_json(Path.home()/'.claude/.credentials.json', {})
+    if sys.platform == 'darwin':
+        import getpass
+        try:
+            from .secure_storage import keychain_backend
+            value = keychain_backend().get_password('Claude Code-credentials', getpass.getuser())
+            if value: raw = json.loads(value)
+        except Exception: pass
+    data = raw.get('claudeAiOauth') if isinstance(raw, dict) else None
     if not isinstance(data,dict) or not data.get('accessToken') or 'user:profile' not in (data.get('scopes') or []): return None
     try: expires = float(data.get('expiresAt',0))/1000
     except (TypeError,ValueError): expires = 0

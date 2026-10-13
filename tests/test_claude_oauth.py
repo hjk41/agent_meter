@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import threading
 import time
+import sys
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
@@ -36,6 +37,16 @@ def tokens(access='ACCESS-PRIVATE',refresh='REFRESH-PRIVATE'):
 class OAuthTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
+        if sys.platform == 'darwin':
+            # Unit tests must not create persistent entries in a real Keychain.
+            from unittest.mock import Mock
+            from agent_meter import secure_storage
+            values = {}
+            backend = Mock()
+            backend.get_password.side_effect = lambda service, account: values.get((service,account))
+            backend.set_password.side_effect = lambda service, account, value: values.__setitem__((service,account),value)
+            patcher = patch.object(secure_storage,'keychain_backend',return_value=backend)
+            patcher.start(); self.addCleanup(patcher.stop)
         self.client=ClaudeClient(self.tmp.name)
 
     def test_pkce_and_callback_validation(self):
