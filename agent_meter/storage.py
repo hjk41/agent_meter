@@ -7,6 +7,13 @@ import sys
 from urllib.parse import urlparse
 from .model import PROVIDERS, Snapshot, DEFAULT_REFRESH_SECONDS
 
+WINDOW_LAYOUTS = {
+    'compact': ('2 列网格（2 × 2）', 2),
+    'columns3': ('3 列网格（1 × 3）', 3),
+    'dock': ('4 列网格（1 × 4）', 4),
+    'single_row': ('单行排列', 0),
+}
+
 def data_dir():
     override = os.environ.get('AGENT_METER_DATA_DIR')
     if override: return Path(override)
@@ -52,7 +59,7 @@ def normalize(data):
     result['enabled_agents'] = ids(result['enabled_agents']) or [result['order'][0]]
     result['mini_ids'] = [p for p in ids(result['mini_ids']) if p in result['enabled_agents']][:3] or [
         next(p for p in result['order'] if p in result['enabled_agents'])]
-    result['layout'] = result['layout'] if result['layout'] in ('compact', 'dock') else 'compact'
+    result['layout'] = result['layout'] if isinstance(result['layout'],str) and result['layout'] in WINDOW_LAYOUTS else 'compact'
     result['theme'] = result['theme'] if result['theme'] in ('system','light','dark') else 'system'
     for name, low, high in [('opacity',55,100), ('refresh_seconds',30,600), ('warning_threshold',1,50)]:
         try: result[name] = max(low,min(high,int(result[name])))

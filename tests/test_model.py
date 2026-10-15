@@ -9,10 +9,20 @@ import unittest
 from unittest.mock import patch
 from agent_meter.model import PROVIDERS, Quota, Snapshot, effective_status, merge_snapshot
 from agent_meter.providers import codex_command, parse_codex, parse_cursor, parse_claude, proxy_environment
-from agent_meter.storage import Store, validate_proxy, normalize, provider_network
+from agent_meter.storage import Store, WINDOW_LAYOUTS, validate_proxy, normalize, provider_network
 from agent_meter.claude_bridge import install_bridge, uninstall_bridge
 
 class QuotaTests(unittest.TestCase):
+    def test_layout_preferences_round_trip_and_legacy_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for layout in WINDOW_LAYOUTS:
+                store=Store(tmp); store.settings['layout']=layout; store.save()
+                self.assertEqual(Store(tmp).settings['layout'],layout)
+        self.assertEqual(normalize({'layout':'compact'})['layout'],'compact')
+        self.assertEqual(normalize({'layout':'dock'})['layout'],'dock')
+        for invalid in ('invalid',None,[],{},3):
+            self.assertEqual(normalize({'layout':invalid})['layout'],'compact')
+
     def test_codex_desktop_binary_is_found_without_path_entry(self):
         with tempfile.TemporaryDirectory() as tmp:
             binary = Path(tmp)/'OpenAI/Codex/bin/version/codex.exe'

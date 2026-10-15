@@ -8,7 +8,7 @@ from PySide6.QtGui import QFontDatabase
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from agent_meter.ui import MeterWindow, SettingsDialog
-from agent_meter.storage import Store
+from agent_meter.storage import Store, WINDOW_LAYOUTS
 from agent_meter.model import Snapshot, Quota
 from agent_meter.doubao import parse_quota
 
@@ -53,6 +53,31 @@ class WindowTests(unittest.TestCase):
         self.store.settings['mini']=True; self.store.settings['mini_ids']=['codex','cursor']; self.window.render(); self.app.processEvents()
         text=[b.text() for b in self.window.findChildren(QPushButton) if b.isVisible()]
         self.assertTrue(text[0].startswith('Cursor')); self.assertTrue(text[1].startswith('Codex'))
+
+    def test_layout_selection_places_all_agents_and_survives_mini(self):
+        ids=['codex','cursor','devin']
+        self.store.settings.update(enabled_agents=ids,order=ids+['claude','doubao'])
+        self.window.set_autostart=lambda _:None
+        for layout,(_,count) in WINDOW_LAYOUTS.items():
+            dialog=SettingsDialog(self.window)
+            dialog.layout.setCurrentIndex(dialog.layout.findData(layout))
+            dialog.save(); self.app.processEvents()
+            self.assertEqual(Store(self.tmp.name).settings['layout'],layout)
+            points=[self.window.tiles[p].mapTo(self.window,QPoint(0,0)) for p in ids]
+            columns=count or len(ids)
+            for i,point in enumerate(points):
+                if i%columns:
+                    self.assertEqual(point.y(),points[i-1].y())
+                    self.assertGreater(point.x(),points[i-1].x())
+                elif i:
+                    self.assertEqual(point.x(),points[0].x())
+                    self.assertGreater(point.y(),points[i-columns].y())
+            size=self.window.size()
+            self.window.toggle_mini(); self.window.toggle_mini(); self.app.processEvents()
+            self.assertEqual(self.window.size(),size)
+            reopened=SettingsDialog(self.window)
+            self.assertEqual(reopened.layout.currentData(),layout)
+            reopened.close(); reopened.deleteLater(); dialog.deleteLater()
     def test_refresh_updates_widgets_without_rebuilding_or_moving_windows(self):
         self.window.snapshots['codex']=Snapshot('codex','live','已连接',quotas=[Quota('5 小时',98),Quota('7 天',70)])
         self.window.render(); self.window.show_detail('codex'); self.app.processEvents()

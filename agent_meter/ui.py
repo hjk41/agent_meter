@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
     QSlider, QSpinBox, QLineEdit, QDialogButtonBox, QMessageBox, QProgressBar,
     QSystemTrayIcon, QMenu, QDoubleSpinBox, QDateTimeEdit)
 from .model import PROVIDERS, Snapshot, effective_status, merge_snapshot, percent, reset_text
-from .storage import validate_proxy, provider_network
+from .storage import WINDOW_LAYOUTS, validate_proxy, provider_network
 from .providers import collect
 from .claude_bridge import install_bridge, uninstall_bridge
 from .connections import connection_description, USAGE_URLS, open_local_cursor, codex_login
@@ -409,8 +409,11 @@ class SettingsDialog(QDialog):
             boxes.addWidget(box); box.toggled.connect(lambda checked,p=p:self.validate_focus(p,checked))
         form.addRow('迷你条重点（1–3 项）',focus)
         self.sync_focus()
-        self.layout=QComboBox(); self.layout.addItems(['紧凑方格','横向方格']); self.layout.setCurrentIndex(self.config['layout']=='dock')
-        form.addRow('正常窗口',self.layout)
+        self.layout=QComboBox()
+        for key,(caption,_) in WINDOW_LAYOUTS.items(): self.layout.addItem(caption,key)
+        self.layout.setCurrentIndex(self.layout.findData(self.config['layout']))
+        form.addRow('主界面布局',self.layout)
+        form.addRow('',label('网格列数固定，行数随显示的 Agent 数量自动调整。',9,owner.colors['muted']))
         self.opacity=QSlider(Qt.Orientation.Horizontal); self.opacity.setRange(55,100); self.opacity.setValue(self.config['opacity'])
         self.opacity_label=QLabel(str(self.opacity.value())+'%'); self.opacity.valueChanged.connect(lambda n:self.opacity_label.setText(str(n)+'%'))
         opacity_row=QHBoxLayout(); opacity_row.addWidget(self.opacity); opacity_row.addWidget(self.opacity_label)
@@ -488,7 +491,7 @@ class SettingsDialog(QDialog):
             except ValueError as e: self.error.setText(str(e)); return
         config['network']=net
         config.update(enabled_agents=[p for p,b in self.agent_visibility.items() if b.isChecked()],
-                      mini_ids=[p for p,b in self.focus.items() if b.isChecked()],layout=['compact','dock'][self.layout.currentIndex()],
+                      mini_ids=[p for p,b in self.focus.items() if b.isChecked()],layout=self.layout.currentData(),
                       opacity=self.opacity.value(),pinned=self.pinned.isChecked(),theme=['system','light','dark'][self.theme.currentIndex()],
                       refresh_seconds=self.interval.value(),notifications=self.alerts.isChecked(),warning_threshold=self.threshold.value())
         try:
@@ -605,7 +608,8 @@ class MeterWindow(QWidget):
             header.addWidget(pin)
             header.addWidget(button('⚙','设置',self.show_settings,28)); header.addWidget(button('×','隐藏到托盘',self.hide,28))
             self.body.addLayout(header)
-            grid=QGridLayout(); grid.setSpacing(8); columns=4 if cfg['layout']=='dock' else 2
+            grid=QGridLayout(); grid.setSpacing(8)
+            columns=WINDOW_LAYOUTS[cfg['layout']][1] or max(1,len(self.visible_agents()))
             self.tiles={}
             for i,p in enumerate(self.visible_agents()):
                 tile=Tile(self,p); self.tiles[p]=tile; grid.addWidget(tile,i//columns,i%columns)
