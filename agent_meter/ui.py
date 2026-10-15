@@ -235,7 +235,7 @@ class MiniTag(MiniDragButton):
         for i in range(max(1,min(2,len(quotas)))):
             group=QWidget(self); group.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
             pair=QHBoxLayout(group); pair.setContentsMargins(0,0,0,0); pair.setSpacing(3)
-            fallback={'cursor':'其他','codex':'7d','claude':'5h','doubao':'5h'}[provider]
+            fallback={'cursor':'其他','codex':'7d','claude':'5h','doubao':'5h','devin':'每日'}[provider]
             caption=mini_quota_name(provider,quotas[i].name) if i<len(quotas) else fallback
             name=text_label(caption)
             name.setStyleSheet(f'color:{c["muted"]};background:transparent;')
@@ -640,7 +640,7 @@ class MeterWindow(QWidget):
     def received(self,p,fresh):
         old=self.snapshots[p]; job=self.busy.pop(p,None)
         if p not in self.store.settings['enabled_agents']: return
-        if job and p in ('cursor','codex','claude') and (provider_network(job.settings,p)!=provider_network(self.store.settings,p)
+        if job and p in ('cursor','codex','claude','devin') and (provider_network(job.settings,p)!=provider_network(self.store.settings,p)
                 or (p=='claude' and job.auth_generation!=claude_client(self.store.directory).generation)):
             self.refresh([p]); return
         self.snapshots[p]=merge_snapshot(old,fresh)
@@ -757,6 +757,10 @@ class MeterWindow(QWidget):
             body.addWidget(button('打开官方用量页','通过 Claude 官方网页查看套餐额度',lambda:self.open_url(USAGE_URLS[p])))
             body.addWidget(button('手动录入额度','尚未连接时临时录入',lambda:self.manual_dialog(p)))
             body.addWidget(button('状态栏采集设置','已安装官方 CLI 时的可选采集方式',self.show_settings))
+        elif p=='devin':
+            body.addWidget(button('复制登录命令','在终端运行 Devin 官方登录命令',
+                lambda:QApplication.clipboard().setText('devin auth login')))
+            body.addWidget(button('打开 Devin 官网','打开官方账号页面',lambda:self.open_url(USAGE_URLS[p])))
         else:
             body.addWidget(button('复用本机登录并刷新','读取本机已登录的豆包会话，无需启动桌面版',lambda:self.refresh(['doubao'])))
             start=button('启动豆包并连接','启动已退出的桌面版并复用当前登录',lambda:self.start_doubao_connection(dialog,status,start))

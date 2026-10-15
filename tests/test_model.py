@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 import unittest
 from unittest.mock import patch
-from agent_meter.model import Quota, Snapshot, effective_status, merge_snapshot
+from agent_meter.model import PROVIDERS, Quota, Snapshot, effective_status, merge_snapshot
 from agent_meter.providers import codex_command, parse_codex, parse_cursor, parse_claude, proxy_environment
 from agent_meter.storage import Store, validate_proxy, normalize, provider_network
 from agent_meter.claude_bridge import install_bridge, uninstall_bridge
@@ -63,11 +63,11 @@ class QuotaTests(unittest.TestCase):
         self.assertEqual(normalize({})['refresh_seconds'],300)
         self.assertEqual(normalize({'refresh_seconds':120})['refresh_seconds'],120)
         config=normalize({'order':['codex','codex','new'],'mini_ids':[],'opacity':999})
-        self.assertEqual(len(config['order']),4); self.assertEqual(config['mini_ids'],['codex'])
+        self.assertEqual(len(config['order']),len(PROVIDERS)); self.assertEqual(config['mini_ids'],['codex'])
         self.assertEqual(config['opacity'],100)
         config=normalize({'enabled_agents':['cursor','codex'],'mini_ids':['claude','cursor']})
         self.assertEqual(config['mini_ids'],['cursor'])
-        self.assertEqual(set(normalize({})['enabled_agents']),{'cursor','codex','claude','doubao'})
+        self.assertEqual(set(normalize({})['enabled_agents']),set(PROVIDERS))
         with tempfile.TemporaryDirectory() as tmp:
             store=Store(tmp); store.settings['order']=['cursor','doubao','codex','claude']; store.settings['mini_ids']=['cursor','claude']; store.save()
             self.assertEqual(Store(tmp).settings['order'],store.settings['order'])

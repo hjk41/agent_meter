@@ -251,6 +251,9 @@ def collect(provider,settings,directory):
     try:
         if provider=='codex': return collect_codex(provider_network(settings,provider))
         if provider=='cursor': return collect_cursor(provider_network(settings,provider))
+        if provider=='devin':
+            from .devin import collect_devin
+            return collect_devin(provider_network(settings,provider))
         if provider=='doubao':
             from .doubao import collect_doubao
             network=provider_network(settings,provider) if 'network' in settings else {'mode':'direct','url':''}

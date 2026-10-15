@@ -21,6 +21,7 @@ class WindowTests(unittest.TestCase):
         QFontDatabase.addApplicationFont('C:/Windows/Fonts/segoeui.ttf')
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.store=Store(self.tmp.name)
+        self.store.settings['enabled_agents']=['cursor','codex','claude','doubao']
         self.window=MeterWindow(self.store,auto_collect=False)
         self.window.show(); self.app.processEvents()
     def tearDown(self):
@@ -47,7 +48,7 @@ class WindowTests(unittest.TestCase):
         self.window.toggle_mini(); self.app.processEvents(); self.window.grab().save('native-mini.png')
     def test_order_is_shared_with_mini_and_saved(self):
         self.window.reorder('cursor','codex','before')
-        self.assertEqual(self.store.settings['order'],['doubao','cursor','codex','claude'])
+        self.assertEqual(self.store.settings['order'],['doubao','cursor','codex','claude','devin'])
         self.assertEqual(Store(self.tmp.name).settings['order'],self.store.settings['order'])
         self.store.settings['mini']=True; self.store.settings['mini_ids']=['codex','cursor']; self.window.render(); self.app.processEvents()
         text=[b.text() for b in self.window.findChildren(QPushButton) if b.isVisible()]
@@ -275,6 +276,31 @@ class WindowTests(unittest.TestCase):
             self.assertNotEqual(self.window.pos(),position)
             self.assertEqual(clicked,[])
             self.assertEqual(Store(self.tmp.name).settings['position'],[self.window.x(),self.window.y()])
+
+    def test_devin_multiple_windows_and_connection_actions(self):
+        self.store.settings['enabled_agents']=['devin']
+        self.store.settings['mini_ids']=['devin']
+        self.window.snapshots['devin']=Snapshot('devin','live','已连接',quotas=[
+            Quota('每日',64),Quota('每周',29)])
+        self.window.render(); self.app.processEvents()
+        self.assertEqual(len(self.window.tiles['devin'].quota_widgets),2)
+        self.window.show_connection('devin')
+        dialog=self.window.connection_dialogs['devin']
+        buttons={b.text():b for b in dialog.findChildren(QPushButton)}
+        self.assertIn('复制登录命令',buttons)
+        self.assertNotIn('启动豆包并连接',buttons)
+        buttons['复制登录命令'].click()
+        self.assertEqual(QApplication.clipboard().text(),'devin auth login')
+        dialog.close()
+        self.store.settings['mini']=True; self.window.render(); self.app.processEvents()
+        tag=self.window.mini_buttons['devin']
+        self.assertEqual([name.text() for _,name,_ in tag.quota_widgets],['每日','每周'])
+        geometry=self.window.geometry()
+        self.window.received('devin',Snapshot('devin','live','已连接',quotas=[
+            Quota('每日',100),Quota('每周',0)]))
+        self.app.processEvents()
+        self.assertEqual(self.window.geometry(),geometry)
+        self.assertEqual([value.text() for _,_,value in tag.quota_widgets],['100%','0%'])
 
     def test_claude_oauth_start_close_and_success_controls(self):
         class ImmediatePool:

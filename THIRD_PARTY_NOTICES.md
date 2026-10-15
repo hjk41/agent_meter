@@ -3,6 +3,7 @@
 Agent Meter uses Python, Qt for Python (PySide6 Essentials / Shiboken6), Requests,
 urllib3, certifi, charset-normalizer, idna, PySocks and websocket-client, packaged with PyInstaller.
 macOS additionally uses keyring and its Python dependencies for native Keychain access.
+Python 3.10 additionally uses tomli to read the local Devin CLI TOML credentials.
 
 - Python: Python Software Foundation License — https://docs.python.org/3/license.html
 - Qt / PySide6 / Shiboken6: LGPL v3 / GPL v3 and third-party licenses — https://doc.qt.io/qtforpython-6/licenses.html
@@ -16,6 +17,7 @@ macOS additionally uses keyring and its Python dependencies for native Keychain 
 - cryptography: Apache 2.0 / BSD — https://github.com/pyca/cryptography/blob/main/LICENSE
 - PyInstaller: GPL with bootloader exception — https://pyinstaller.org/en/stable/license.html
 - keyring: MIT — https://github.com/jaraco/keyring
+- tomli (Python 3.10): MIT — https://github.com/hukkin/tomli/blob/master/LICENSE
 
 The application source is in this project. The bundled Qt libraries are dynamically
 loaded. Third-party source and license notices remain available from the projects above.

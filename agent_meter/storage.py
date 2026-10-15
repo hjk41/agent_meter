@@ -14,12 +14,12 @@ def data_dir():
         return Path.home()/'Library/Application Support/AgentMeter'
     return Path(os.environ.get('LOCALAPPDATA', Path.home()))/'AgentMeter'
 
-DEFAULTS = {'order': ['doubao', 'codex', 'claude', 'cursor'], 'mini_ids': ['claude', 'cursor'],
+DEFAULTS = {'order': ['doubao', 'codex', 'claude', 'cursor', 'devin'], 'mini_ids': ['claude', 'cursor'],
             'enabled_agents': list(PROVIDERS),
             'mini': False, 'layout': 'compact', 'opacity': 90, 'pinned': True,
             'theme': 'system', 'refresh_seconds': DEFAULT_REFRESH_SECONDS, 'position': None,
             'notifications': True, 'warning_threshold': 20,
-            'network': {'mode': 'system', 'url': '', 'agents': ['cursor','codex','claude']},
+            'network': {'mode': 'system', 'url': '', 'agents': ['cursor','codex','claude','devin']},
             'manual': {}}
 
 def atomic_json(path, data):

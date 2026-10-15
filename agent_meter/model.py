@@ -6,7 +6,8 @@ import time
 DEFAULT_REFRESH_SECONDS = 300
 
 PROVIDERS = {'cursor': ('Cursor', 'Pro', 'C'), 'codex': ('Codex', 'Ultra', 'O'),
-             'claude': ('Claude Code', 'Max', '✳'), 'doubao': ('豆包', '桌面版', '豆')}
+             'claude': ('Claude Code', 'Max', '✳'), 'doubao': ('豆包', '桌面版', '豆'),
+             'devin': ('Devin', 'CLI', 'D')}
 
 def number(value):
     try:
