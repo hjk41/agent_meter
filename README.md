@@ -76,7 +76,7 @@ Claude OAuth 参考 [claude-usage-bar-windows](https://github.com/character-s/cl
 
 Devin 接入目前在源码和本机构建中，`0.2.0` 发布包尚不包含。先在 [官方 Devin CLI](https://docs.devin.ai/work-with-devin/devin-cli) 完成登录，再在设置中勾选 Devin。连接管理可复制 `devin auth login` 命令。额度请求遵循设置中的共享代理选择；隐藏 Devin 后暂停采集。缺失、被账号隐藏或不可计算的窗口不显示为 100%，资金余额、模型上下文和 ACU 消耗不会混入每日 / 每周百分比。
 
-Windows 已使用 Devin CLI 3000.11.92 的本机登录验证真实账号额度；可见窗口由账号返回决定。macOS 凭据路径按官方定义支持，真实 Devin 账号尚未验证。
+Windows 已使用 Devin CLI 3000.11.92 的本机登录验证真实账号额度；macOS / Apple Silicon 也已验证打包应用复用本机登录、查询真实 Devin 额度及迷你条显示。可见窗口由账号返回决定。
 
 Devin 凭据遵循[官方路径](https://docs.devin.ai/cli/enterprise/devin-auth#credentials-file-location)：Windows 为 `%APPDATA%/devin/credentials.toml`，macOS / Linux 为 `$XDG_DATA_HOME/devin/credentials.toml`，未设置时为 `~/.local/share/devin/credentials.toml`。可通过 `AGENT_METER_DEVIN_CREDENTIALS` 指定其他文件。每次只读其中的 API 密钥与服务地址，向该服务发送只读额度请求，不修改 CLI 文件，不另存令牌，不启动模型或云会话。额度缓存只保存标准化窗口；接口属于客户端内部协议，可能随 Devin 更新而变化。
 
@@ -134,7 +134,7 @@ Finder 启动不依赖终端 PATH：Codex 支持 `~/.local/bin/codex`、官方 s
 
 macOS `.app` 使用 [PyInstaller 应用包](https://pyinstaller.org/en/stable/spec-files.html#spec-file-options-for-a-macos-bundle)及本机临时签名构建，适合本机部署；尚未使用 Apple Developer ID 签名或公证。
 
-已在 macOS 26.6.2 / Apple Silicon 验证 Cocoa 窗口、全局快捷键注册、应用包签名及 Finder 启动后的真实 Codex / Cursor 额度刷新；Cursor 的两个额度池均可显示。macOS 的 Claude OAuth 与豆包加密协议通过受控测试，真实账号额度尚未验证。Windows 59 项测试全部通过；macOS 同一套测试中 Windows DPAPI 测试跳过。每次发布会在两个平台重新运行测试，并验证构建好的应用能启动。
+已在 macOS 26.6.2 / Apple Silicon 验证 Cocoa 窗口、全局快捷键注册、应用包签名及 Finder 启动后的真实 Codex / Cursor / Devin 额度刷新；Cursor 的两个额度池均可显示。macOS 的 Claude OAuth 与豆包加密协议通过受控测试，真实账号额度尚未验证。Windows 67 项测试通过；macOS 同一套测试通过，其中 1 项 Windows DPAPI 测试跳过。每次发布会在两个平台重新运行测试，并验证构建好的应用能启动。
 
 ## 发布新版本
 
