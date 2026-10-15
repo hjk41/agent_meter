@@ -13,6 +13,9 @@ except ModuleNotFoundError:  # Python 3.10
 from .model import Quota, Snapshot, number
 
 STATUS_PATH = '/exa.seat_management_pb.SeatManagementService/GetUserStatus'
+# GetUserStatus validates the client metadata, including both version fields.
+# This shape was verified against the installed official CLI and the live service.
+CLI_PROTOCOL_VERSION = '3000.11.92'
 
 
 def credentials_path():
@@ -67,7 +70,10 @@ def collect_devin(network):
     with http_session(network) as session:
         response = session.post(server.rstrip('/') + STATUS_PATH,
             headers={'Content-Type':'application/json', 'Connect-Protocol-Version':'1'},
-            json={'metadata':{'apiKey':token, 'ideName':'devin-cli'}},
+            json={'metadata':{'apiKey':token, 'ideName':'devin-cli', 'ideType':'chisel',
+                'ideVersion':CLI_PROTOCOL_VERSION, 'extensionName':'chisel',
+                'extensionVersion':CLI_PROTOCOL_VERSION, 'locale':'en',
+                'os':'windows' if sys.platform=='win32' else sys.platform}},
             timeout=(5, 30), allow_redirects=False)
         if response.status_code in (401, 403): raise PermissionError('Devin login')
         response.raise_for_status()

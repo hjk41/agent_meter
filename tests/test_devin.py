@@ -70,6 +70,10 @@ class DevinTests(unittest.TestCase):
                     args,kwargs=session.post.call_args
                     self.assertEqual(args[0],'https://server.self-serve.windsurf.com'+STATUS_PATH)
                     self.assertEqual(kwargs['json']['metadata']['apiKey'],token)
+                    self.assertEqual(kwargs['json']['metadata']['ideName'],'devin-cli')
+                    self.assertEqual(kwargs['json']['metadata']['extensionName'],'chisel')
+                    for required in ('ideVersion','extensionVersion','locale','os'):
+                        self.assertTrue(kwargs['json']['metadata'][required])
                     self.assertFalse(kwargs['allow_redirects'])
                     self.assertNotIn(token,json.dumps(snapshot.to_dict()))
                     self.assertEqual(path.read_text(),original)

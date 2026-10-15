@@ -76,6 +76,8 @@ Claude OAuth 参考 [claude-usage-bar-windows](https://github.com/character-s/cl
 
 Devin 接入目前在源码和本机构建中，`0.2.0` 发布包尚不包含。先在 [官方 Devin CLI](https://docs.devin.ai/work-with-devin/devin-cli) 完成登录，再在设置中勾选 Devin。连接管理可复制 `devin auth login` 命令。额度请求遵循设置中的共享代理选择；隐藏 Devin 后暂停采集。缺失、被账号隐藏或不可计算的窗口不显示为 100%，资金余额、模型上下文和 ACU 消耗不会混入每日 / 每周百分比。
 
+Windows 已使用 Devin CLI 3000.11.92 的本机登录验证真实账号额度；可见窗口由账号返回决定。macOS 凭据路径按官方定义支持，真实 Devin 账号尚未验证。
+
 Devin 凭据遵循[官方路径](https://docs.devin.ai/cli/enterprise/devin-auth#credentials-file-location)：Windows 为 `%APPDATA%/devin/credentials.toml`，macOS / Linux 为 `$XDG_DATA_HOME/devin/credentials.toml`，未设置时为 `~/.local/share/devin/credentials.toml`。可通过 `AGENT_METER_DEVIN_CREDENTIALS` 指定其他文件。每次只读其中的 API 密钥与服务地址，向该服务发送只读额度请求，不修改 CLI 文件，不另存令牌，不启动模型或云会话。额度缓存只保存标准化窗口；接口属于客户端内部协议，可能随 Devin 更新而变化。
 
 本机实际验证过 Cursor 的两个额度池、Codex 的 7 天窗口，以及豆包桌面版 2.31.4 返回的 5 小时、7 天额度与重置时间。Claude OAuth 已验证 PKCE、状态校验、取消、加密存储、令牌刷新及用量解析；网络协议使用受控响应验证，真实账号授权和真实 Claude 额度尚未验证。没有返回窗口时明确显示未知。可选状态栏方式需要已安装并登录的 Claude Code 新会话返回 `rate_limits`。应用不会主动发起付费模型请求。
