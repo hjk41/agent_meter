@@ -74,7 +74,8 @@ def collect_devin(network):
                 'ideVersion':CLI_PROTOCOL_VERSION, 'extensionName':'chisel',
                 'extensionVersion':CLI_PROTOCOL_VERSION, 'locale':'en',
                 'os':'windows' if sys.platform=='win32' else sys.platform}},
-            timeout=(5, 30), allow_redirects=False)
+            # Proxy TLS setup can exceed five seconds even for a valid login.
+            timeout=(15, 30), allow_redirects=False)
         if response.status_code in (401, 403): raise PermissionError('Devin login')
         response.raise_for_status()
         return parse_devin(response.json())

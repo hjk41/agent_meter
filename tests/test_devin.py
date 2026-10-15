@@ -75,6 +75,7 @@ class DevinTests(unittest.TestCase):
                     for required in ('ideVersion','extensionVersion','locale','os'):
                         self.assertTrue(kwargs['json']['metadata'][required])
                     self.assertFalse(kwargs['allow_redirects'])
+                    self.assertEqual(kwargs['timeout'],(15,30))
                     self.assertNotIn(token,json.dumps(snapshot.to_dict()))
                     self.assertEqual(path.read_text(),original)
 
