@@ -54,6 +54,7 @@ GitHub 仓库提供源码，`dist/` 是本地构建输出，不纳入版本控�
 | Claude | 独立浏览器 OAuth；没有本工具授权时只读有效的本机 Claude Code 登录 | 无需安装 CLI；使用内部接口，官方未承诺第三方兼容性 |
 | 豆包 | 只读复用本机登录，独立 HTTP 查询订阅额度；桌面版连接为备用方式 | 首次复用需登录后退出一次，随后无需保持豆包运行；不是第三方 OAuth，扫码登录尚未实现 |
 | Devin | 只读复用本机 Devin CLI 登录；重新登录在终端执行 `devin auth login` | 每次采集重新读取 CLI 凭据；不启动 Agent 会话 |
+| Droid | 只读复用 Factory 桌面版或 Droid CLI 的系统凭据库登录；也可通过 `FACTORY_API_KEY` 指定 API Key | 本机登录过期时，在 Factory 客户端刷新登录后再刷新连接 |
 
 Codex OAuth 的回调和凭据存储由官方组件完成，悬浮窗只接收登录地址与完成状态。该流程已验证能够启动官方认证地址并取消；真实重新登录需用户在浏览器完成授权。应用不会自动退出当前账号。
 如果浏览器没有自动打开，连接管理会显示“复制登录链接”，可将官方授权链接粘贴到浏览器继续登录。
@@ -73,12 +74,15 @@ Claude OAuth 参考 [claude-usage-bar-windows](https://github.com/character-s/cl
 | Claude | OAuth `/api/oauth/usage` 返回的 5 小时、7 天及可用的模型额度窗口 | 默认每 5 分钟；没有有效 OAuth 登录时可回退到状态栏快照或手动录入 |
 | 豆包 | 独立 HTTP 查询个人 `membership` 订阅额度；可回退到桌面版额度服务 | 默认每 5 分钟；客户端关闭后仍可刷新；显示时段及周期额度、重置时间；失败可回退到明确标注的手动录入 |
 | Devin | 本机 Devin CLI 登录 + 客户端 `GetUserStatus` 账号额度接口 | 默认每 5 分钟，显示接口返回的每日、每周剩余额度及各自重置时间；主界面、详情和迷你条均可显示 |
+| Droid | 本机 Factory 登录或 API Key + `GET https://api.factory.ai/api/billing/limits` | 默认每 5 分钟，显示标准额度和 Droid Core 各自的 5 小时、7 天、30 天剩余额度与重置时间 |
 
 Devin 接入目前在源码和本机构建中，`0.2.0` 发布包尚不包含。先在 [官方 Devin CLI](https://docs.devin.ai/work-with-devin/devin-cli) 完成登录，再在设置中勾选 Devin。连接管理可复制 `devin auth login` 命令。额度请求遵循设置中的共享代理选择；隐藏 Devin 后暂停采集。缺失、被账号隐藏或不可计算的窗口不显示为 100%，资金余额、模型上下文和 ACU 消耗不会混入每日 / 每周百分比。
 
 Windows 已使用 Devin CLI 3000.11.92 的本机登录验证真实账号额度；macOS / Apple Silicon 也已验证打包应用复用本机登录、查询真实 Devin 额度及迷你条显示。可见窗口由账号返回决定。
 
 Devin 凭据遵循[官方路径](https://docs.devin.ai/cli/enterprise/devin-auth#credentials-file-location)：Windows 为 `%APPDATA%/devin/credentials.toml`，macOS / Linux 为 `$XDG_DATA_HOME/devin/credentials.toml`，未设置时为 `~/.local/share/devin/credentials.toml`。可通过 `AGENT_METER_DEVIN_CREDENTIALS` 指定其他文件。每次只读其中的 API 密钥与服务地址，向该服务发送只读额度请求，不修改 CLI 文件，不另存令牌，不启动模型或云会话。额度缓存只保存标准化窗口；接口属于客户端内部协议，可能随 Devin 更新而变化。
+
+Droid 接入在源码和本机构建中可用。已有设置可在 设置 → 显示 → 显示的 Agent 中勾选 Droid。采集读取 `~/.factory/auth.v2.keyring` 和系统凭据库中的 Factory 加密密钥，使用现有访问令牌向 Factory 的内部额度接口发送只读请求。应用不会保存或续签 Factory 令牌，也不会启动 Droid 会话。设置 `FACTORY_API_KEY` 后，优先使用该 Key。主界面最多显示三个窗口，详情会列出账号返回的全部窗口。Windows 已使用 Factory 桌面版登录验证真实额度。[Factory 额度说明](https://docs.factory.ai/pricing/individuals)
 
 本机实际验证过 Cursor 的两个额度池、Codex 的 7 天窗口，以及豆包桌面版 2.31.4 返回的 5 小时、7 天额度与重置时间。Claude OAuth 已验证 PKCE、状态校验、取消、加密存储、令牌刷新及用量解析；网络协议使用受控响应验证，真实账号授权和真实 Claude 额度尚未验证。没有返回窗口时明确显示未知。可选状态栏方式需要已安装并登录的 Claude Code 新会话返回 `rate_limits`。应用不会主动发起付费模型请求。
 

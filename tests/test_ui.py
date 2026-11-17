@@ -48,7 +48,7 @@ class WindowTests(unittest.TestCase):
         self.window.toggle_mini(); self.app.processEvents(); self.window.grab().save('native-mini.png')
     def test_order_is_shared_with_mini_and_saved(self):
         self.window.reorder('cursor','codex','before')
-        self.assertEqual(self.store.settings['order'],['doubao','cursor','codex','claude','devin'])
+        self.assertEqual(self.store.settings['order'],['doubao','cursor','codex','claude','devin','droid'])
         self.assertEqual(Store(self.tmp.name).settings['order'],self.store.settings['order'])
         self.store.settings['mini']=True; self.store.settings['mini_ids']=['codex','cursor']; self.window.render(); self.app.processEvents()
         text=[b.text() for b in self.window.findChildren(QPushButton) if b.isVisible()]

@@ -254,6 +254,9 @@ def collect(provider,settings,directory):
         if provider=='devin':
             from .devin import collect_devin
             return collect_devin(provider_network(settings,provider))
+        if provider=='droid':
+            from .droid import collect_droid
+            return collect_droid(provider_network(settings,provider))
         if provider=='doubao':
             from .doubao import collect_doubao
             network=provider_network(settings,provider) if 'network' in settings else {'mode':'direct','url':''}

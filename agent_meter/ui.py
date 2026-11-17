@@ -65,6 +65,8 @@ def mini_quota_name(provider, name):
             '套餐额度 · 月度': '月度', '其他模型额度池': '其他',
             'Cursor 模型额度池': 'Cursor', '套餐额度池': '套餐'}
         if name in aliases: return aliases[name]
+    elif provider == 'droid':
+        name = name.removeprefix('标准 · ').replace('Core · ', 'Core ')
     short = short_quota_name(name)
     return short if len(short) <= 8 else short[:7] + '…'
 
@@ -235,7 +237,7 @@ class MiniTag(MiniDragButton):
         for i in range(max(1,min(2,len(quotas)))):
             group=QWidget(self); group.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
             pair=QHBoxLayout(group); pair.setContentsMargins(0,0,0,0); pair.setSpacing(3)
-            fallback={'cursor':'其他','codex':'7d','claude':'5h','doubao':'5h','devin':'每日'}[provider]
+            fallback={'cursor':'其他','codex':'7d','claude':'5h','doubao':'5h','devin':'每日','droid':'5h'}[provider]
             caption=mini_quota_name(provider,quotas[i].name) if i<len(quotas) else fallback
             name=text_label(caption)
             name.setStyleSheet(f'color:{c["muted"]};background:transparent;')
@@ -644,7 +646,7 @@ class MeterWindow(QWidget):
     def received(self,p,fresh):
         old=self.snapshots[p]; job=self.busy.pop(p,None)
         if p not in self.store.settings['enabled_agents']: return
-        if job and p in ('cursor','codex','claude','devin') and (provider_network(job.settings,p)!=provider_network(self.store.settings,p)
+        if job and p in ('cursor','codex','claude','devin','droid') and (provider_network(job.settings,p)!=provider_network(self.store.settings,p)
                 or (p=='claude' and job.auth_generation!=claude_client(self.store.directory).generation)):
             self.refresh([p]); return
         self.snapshots[p]=merge_snapshot(old,fresh)
@@ -765,6 +767,8 @@ class MeterWindow(QWidget):
             body.addWidget(button('复制登录命令','在终端运行 Devin 官方登录命令',
                 lambda:QApplication.clipboard().setText('devin auth login')))
             body.addWidget(button('打开 Devin 官网','打开官方账号页面',lambda:self.open_url(USAGE_URLS[p])))
+        elif p=='droid':
+            body.addWidget(button('打开 Factory 用量页','在 Factory 查看账号额度',lambda:self.open_url(USAGE_URLS[p])))
         else:
             body.addWidget(button('复用本机登录并刷新','读取本机已登录的豆包会话，无需启动桌面版',lambda:self.refresh(['doubao'])))
             start=button('启动豆包并连接','启动已退出的桌面版并复用当前登录',lambda:self.start_doubao_connection(dialog,status,start))

@@ -14,7 +14,8 @@ from . import __version__
 USAGE_URLS = {'cursor':'https://cursor.com/dashboard?tab=usage',
               'codex':'https://chatgpt.com/codex/settings/usage',
               'claude':'https://claude.ai/settings/usage', 'doubao':'https://www.doubao.com/',
-              'devin':'https://app.devin.ai/'}
+              'devin':'https://app.devin.ai/',
+              'droid':'https://app.factory.ai/settings/usage'}
 
 def connection_description(provider):
     return {
@@ -23,6 +24,7 @@ def connection_description(provider):
         'claude':'优先复用本机有效登录；没有客户端也可通过浏览器 OAuth 登录。',
         'doubao':'优先复用本机豆包登录，独立读取当前时段及周期额度。首次复用请登录后退出一次；会话加密保存在本机，之后无需保持豆包运行。',
         'devin':'只读复用本机 Devin CLI 登录，查询账号每日与每周额度。重新登录请在终端执行 devin auth login，然后刷新连接。',
+        'droid':'只读复用本机 Factory 登录，查询标准额度和 Droid Core 的滚动窗口。如果登录已过期，请打开 Factory 桌面版或 Droid CLI，确认登录后刷新连接。',
     }[provider]
 
 def open_local_cursor():

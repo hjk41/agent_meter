@@ -7,7 +7,7 @@ DEFAULT_REFRESH_SECONDS = 300
 
 PROVIDERS = {'cursor': ('Cursor', 'Pro', 'C'), 'codex': ('Codex', 'Ultra', 'O'),
              'claude': ('Claude Code', 'Max', '✳'), 'doubao': ('豆包', '桌面版', '豆'),
-             'devin': ('Devin', 'CLI', 'D')}
+             'devin': ('Devin', 'CLI', 'D'), 'droid': ('Droid', 'Factory', 'F')}
 
 def number(value):
     try:
